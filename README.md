@@ -80,6 +80,44 @@ pan/zoom/fit controls, invalid imports, and desktop/narrow viewport widths.
 WebKit automation is useful supplemental coverage, but is not a substitute for
 testing the installed Safari browser.
 
+### Repeatable native Safari checks
+
+Enable **Develop > Developer Settings > Allow remote automation** in Safari
+(the menu location can vary by Safari version). Save unfinished input, quit Safari
+normally, and wait for it to exit. In a separate terminal, start Apple's driver:
+
+```sh
+/usr/bin/safaridriver --port 4444
+```
+
+With the development server running, use a real exported preset:
+
+```sh
+pnpm verify:safari http://127.0.0.1:5173 .factorio-export/base-<unique suffix>/preset.json
+```
+
+After `pnpm build`, start `pnpm preview` and repeat with its URL (normally
+`http://localhost:4173`). The command creates and cleans up its own native Safari
+session; stop the driver with Ctrl-C when finished. Do not interact with Safari
+during the automated checks.
+
+The checks cover local import, the exact green circuit graph and ore boundaries,
+image decoding, recipe switching/inspection, zoom/fit controls, invalid-import
+retention, horizontal overflow, and console/runtime errors captured **after the
+initial page renders**. The import is supplied through an in-page `File` and
+change event, not the operating-system file picker. Startup console errors,
+manual pan/drag, and the OS file picker still require separate verification.
+Requested widths are 1280, 375, and 320 pixels; the command prints actual viewport
+widths and explicitly warns when Safari clamps a request. Safari 27.2 currently
+clamps 320 to 336 pixels, so this does not verify a 320-pixel native viewport.
+
+If session creation times out even with remote automation enabled, quit Safari
+normally, wait for it to exit, and retry. During investigation on Safari 27.2,
+the native log reported **"Safari was not launched for automation"**: the
+already-running browser rejected the session, while a fresh WebDriver-launched
+instance accepted it. Do not repeatedly extend client timeouts or treat
+integrated-browser checks as native Safari evidence.
+
 ## Current scope
 
 Milestone 2 adds local preset import, search/selection, graph layout with ELK.js,

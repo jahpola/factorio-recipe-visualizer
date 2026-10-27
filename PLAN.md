@@ -251,10 +251,17 @@ start the Hello World application with `pnpm dev`, and pass the documented check
 - Development and production pages were verified in VS Code's integrated browser
   at widths of 1280, 375, and 320 pixels: expected content, no horizontal overflow,
   and no browser errors.
-- The user confirmed that the development page opens in native Safari 27.2.
-  Automated Safari layout and error checks remain pending: after remote automation
-  was enabled, repeated Safari WebDriver attempts timed out connecting to a browser
-  session. Integrated browser checks do not establish full Safari compatibility.
+- Native Safari 27.2 development and production-preview checks now pass using
+  `pnpm verify:safari`: expected content and no horizontal overflow at actual
+  viewport widths of 1280, 375, and 336 pixels. Safari clamps a 320-pixel request
+  to 336; a 320-pixel native viewport is not verified.
+- Diagnosed the WebDriver timeout in Safari's native log: the already-running
+  browser rejected sessions because "Safari was not launched for automation."
+  Quitting Safari normally and letting WebDriver launch a fresh instance resolved
+  the timeout. See [README.md](./README.md) for the repeatable procedure.
+- No captured post-load console/runtime errors occurred. Startup console capture,
+  the OS file picker, and manual pan/drag remain outside the automated checks;
+  neither these results nor integrated-browser checks establish full compatibility.
 
 ### Milestone 1: Prove game-data extraction
 
@@ -310,7 +317,10 @@ imported data.
   connections, with iron and copper ore as raw-resource boundaries.
 - Integrated-browser checks cover switching to copper cable, zoom/fit controls,
   widths of 1280/375/320 pixels without horizontal overflow, and invalid imports
-  retaining the active preset. Native Safari graph validation remains pending.
+  retaining the active preset. Native Safari 27.2 development/production checks
+  now also pass for the exact green circuit graph and ore boundaries, recipe
+  inspection/switching, zoom/fit controls, and invalid-import retention. Actual
+  native viewport widths are 1280/375/336 pixels; see Stage 0 for remaining limits.
 - Production-preview import/selection also renders the exact green circuit graph
   without browser errors. All 22 tests, type-checking, linting, frozen-lockfile
   installation, and production build pass; Vite reports a large-chunk advisory
@@ -328,7 +338,9 @@ imported data.
   filtered recipe-list icon, and four detail icons decode successfully in the
   integrated browser; no overflow at 1280/375/320 pixels.
 - All 27 tests, type-checking, linting, build, and old/new real-preset verification
-  pass. Native Safari and modded icon validation remain pending.
+  pass. Native Safari 27.2 now also decodes the real preset's displayed images
+  without icon fallbacks or captured post-load errors on development and production
+  pages. Modded icon validation remains pending.
 
 ### Milestone 3: General base-game support
 

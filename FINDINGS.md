@@ -29,17 +29,12 @@ Review scope: preset validation in `src/data/preset.ts`.
 
 ## Validation
 
-The existing test, type-check, and lint commands passed during review:
+Validated on 2026-10-27:
 
-- `pnpm test`
-- `pnpm typecheck`
-- `pnpm lint`
-
-Post-fix validation passed:
-
-- `pnpm test`: 13 tests passed, including seven source-validation regression tests.
-- `pnpm typecheck`
-- `pnpm lint`
-- `pnpm build`
-- `pnpm verify:preset .factorio-export/base-RyjszX/preset.json`: the existing
-  Factorio 2.1.23 preset and green circuit dependencies remain valid.
+- `fnm exec --using=24.22.1 pnpm test`: 6 test files and 27 tests passed.
+- `fnm exec --using=24.22.1 pnpm typecheck`: passed.
+- `fnm exec --using=24.22.1 pnpm lint`: passed.
+- `fnm exec --using=24.22.1 pnpm build`: passed. Vite reported that the
+  generated JavaScript bundle exceeds its 500 kB advisory threshold.
+- Preset verification was not run: no preset files were present under
+  `.factorio-export/`. Validation against a real local export remains pending.
