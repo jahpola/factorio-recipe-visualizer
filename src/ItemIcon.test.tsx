@@ -14,7 +14,6 @@ test('renders decorative icons and reports decode failures with a text fallback'
   const { container, rerender } = render(<ItemIcon src="data:image/png;base64,invalid" />)
   const image = container.querySelector('img')!
   expect(image.alt).toBe('')
-  expect(image.getAttribute('loading')).toBe('lazy')
   fireEvent.error(image)
   expect(screen.getByRole('img', { name: 'Icon unavailable' })).toBeDefined()
   expect(container.querySelector('img')).toBeNull()

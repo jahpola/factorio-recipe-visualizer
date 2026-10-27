@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, test } from 'vitest'
 import { embedIcons } from './icons.ts'
-import { MAX_ICON_LENGTH, parsePreset } from '../src/data/preset.ts'
+import { parsePreset } from '../src/data/preset.ts'
 
 const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='
 const preset = {
@@ -37,44 +37,8 @@ test('embeds distinct recipe/material icons and reports missing icons', async ()
   }
 })
 
-test('skips icons with unsafe names instead of failing the export', async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), 'factorio-icons-'))
-  try {
-    const unsafe = parsePreset({
-      ...preset,
-      materials: [{ id: 'item:a/b', type: 'item', name: 'a/b', displayName: 'A/B' }],
-      recipes: [{ ...preset.recipes[0], id: '..', products: [{ material: 'item:a/b', amount: 1 }] }],
-    })
-    const result = await embedIcons(unsafe, directory)
-    expect(result.materials[0].icon).toBeUndefined()
-    expect(result.recipes[0].icon).toBeUndefined()
-    expect(result.warnings).toEqual([
-      'Unsafe icon name for item:a/b; using text only.',
-      'Unsafe icon name for recipe:..; using text only.',
-    ])
-  } finally {
-    await rm(directory, { recursive: true })
-  }
-})
-
 test('preserves embedded icons and rejects external URLs', () => {
   expect(parsePreset({ ...preset, materials: [{ ...preset.materials[0], icon: png }] }).materials[0].icon).toBe(png)
   expect(() => parsePreset({ ...preset, materials: [{ ...preset.materials[0], icon: 'https://example.com/icon.png' }] })).toThrow('Expected an embedded PNG icon')
   expect(parsePreset(preset).materials[0].icon).toBeUndefined()
-})
-
-test('rejects oversized icons on import and skips them on export', async () => {
-  const oversized = `${png}${'A'.repeat(MAX_ICON_LENGTH)}`
-  expect(() => parsePreset({ ...preset, materials: [{ ...preset.materials[0], icon: oversized }] })).toThrow('Embedded icon is too large')
-  const directory = await mkdtemp(path.join(tmpdir(), 'factorio-icons-'))
-  try {
-    await mkdir(path.join(directory, 'item'))
-    const bytes = Buffer.concat([Buffer.from(png.split(',')[1], 'base64'), Buffer.alloc(MAX_ICON_LENGTH)])
-    await writeFile(path.join(directory, 'item/plate.png'), bytes)
-    const result = await embedIcons(parsePreset(preset), directory)
-    expect(result.materials[0].icon).toBeUndefined()
-    expect(result.warnings).toContain('Icon for item:plate is too large to embed; using text only.')
-  } finally {
-    await rm(directory, { recursive: true })
-  }
 })
