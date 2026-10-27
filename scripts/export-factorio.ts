@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { normalizeDump } from '../src/data/normalize.ts'
+import { embedIcons } from './icons.ts'
 
 async function main() {
   const steam = path.join(homedir(), 'Library/Application Support/Steam')
@@ -29,20 +30,23 @@ async function main() {
   }, null, 2))
   const config = path.join(run, 'config.ini')
   await writeFile(config, `[path]\nread-data=${data}\nwrite-data=${run}\n[general]\nlocale=en\n`)
-  for (const flag of ['--dump-data', '--dump-prototype-locale']) {
+  for (const flag of ['--dump-data', '--dump-prototype-locale', '--dump-icon-sprites']) {
     const result = spawnSync(executable, ['--config', config, '--mod-directory', mods, '--disable-audio', flag], {
       stdio: 'inherit',
       timeout: 180_000,
+      // Only the graphical icon dump needs Steam initialization.
+      env: flag === '--dump-icon-sprites' ? { ...process.env, SteamAppId: '427520', SteamGameId: '427520' } : process.env,
     })
     if (result.error) throw result.error
     if (result.status !== 0) throw new Error(`Factorio ${flag} failed (exit ${result.status}, signal ${result.signal}). See ${run}.`)
+    // Each run replaces factorio-current.log, so verify the loaded mods per run.
+    const log = await readFile(path.join(run, 'factorio-current.log'), 'utf8')
+    const loadedMods = [...new Set(Array.from(log.matchAll(/Loading mod (\S+) [^\n]+/g), match => match[1]))]
+    if (!loadedMods.includes('base') || loadedMods.some(name => name !== 'base' && name !== 'core')) {
+      throw new Error(`Factorio ${flag}: expected base/core only, but loaded: ${loadedMods.join(', ')}`)
+    }
   }
   const base = JSON.parse(await readFile(path.join(data, 'base/info.json'), 'utf8')) as { version: string }
-  const log = await readFile(path.join(run, 'factorio-current.log'), 'utf8')
-  const loadedMods = [...new Set(Array.from(log.matchAll(/Loading mod (\S+) [^\n]+/g), match => match[1]))]
-  if (!loadedMods.includes('base') || loadedMods.some(name => name !== 'base' && name !== 'core')) {
-    throw new Error(`Expected base/core only, but loaded: ${loadedMods.join(', ')}`)
-  }
   const metadata = {
     gameVersion,
     mods: [{ name: 'base', version: base.version }],
@@ -55,9 +59,10 @@ async function main() {
     fluids: await readJson('fluid-locale.json'),
     recipes: await readJson('recipe-locale.json'),
   })
-  await writeFile(path.join(run, 'preset.json'), JSON.stringify(preset, null, 2))
+  const withIcons = await embedIcons(preset, path.join(run, 'script-output'))
+  await writeFile(path.join(run, 'preset.json'), JSON.stringify(withIcons, null, 2))
   console.log(`Validated ${preset.materials.length} materials, ${preset.recipes.length} recipes, ${preset.sources.length} sources.`)
-  for (const warning of preset.warnings) console.warn(warning)
+  for (const warning of withIcons.warnings) console.warn(warning)
   console.log(`Export complete: ${run}`)
 }
 

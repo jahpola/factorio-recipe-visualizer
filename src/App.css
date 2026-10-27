@@ -19,6 +19,12 @@ small { display: block; color: #bdc5cf; margin-top: 0.3rem; }
 .legend { color: #bdc5cf; font-size: 0.9rem; }
 .graph { height: 580px; border: 1px solid #48505a; border-radius: 0.5rem; }
 .chain-node { white-space: pre-line; display: grid; place-content: center; font-size: 14px; }
+.chain-node .item-icon { margin: 0 auto 0.25rem; width: 28px; height: 28px; }
+.chain-node small { margin-top: 0.15rem; font-size: 11px; }
+.item-icon { object-fit: contain; vertical-align: middle; margin-right: 0.5rem; flex-shrink: 0; }
+.icon-unavailable { display: inline-block; margin-right: 0.5rem; color: #f0bf64; }
+.material-icons { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.material-icons > span { display: inline-flex; align-items: center; }
 .chain-node.recipe { border-color: #7fafff; background: #1b3049; }
 .chain-node.output { border: 2px solid #d5b3ff; background: #38264d; }
 .chain-node.raw { border-color: #80cc92; background: #203d2b; }

@@ -46,6 +46,8 @@ green, selected outputs purple, producer choices amber, and unresolved inputs re
 Labels also identify each node's role. Drag the canvas to pan; use the mouse wheel
 or controls to zoom and **Fit View** to restore the full chain. Nodes can be moved.
 Click a recipe card for ingredient/product details without quantities or ratios.
+New exports include game-rendered recipe, item, and fluid icons in the browser,
+graph, and details panel. Older presets without icons still work with text labels.
 An accessible node summary is available below the canvas.
 
 If an ingredient has multiple visible producer recipes, choose one from the
@@ -86,7 +88,7 @@ but broader base-game/mod compatibility is not yet certified. Hidden recipes are
 excluded from the browser and upstream producer candidates. Raw resources terminate
 expansion even when recipes can also produce them.
 
-No ratios, machine counts, icons, branch collapse controls, graph persistence,
+No ratios, machine counts, branch collapse controls, graph persistence,
 backend, or database are included. Fluid temperature compatibility is not evaluated;
 constrained ingredients produce a warning. Large-graph performance and incremental
 expansion remain later work. The initial production bundle includes ELK's sizeable
@@ -110,12 +112,15 @@ FACTORIO_APP="/path/to/factorio.app" pnpm export:factorio
 Each run creates a separate `.factorio-export/base-<unique suffix>/` directory
 and prints its absolute path. It contains:
 
-- `preset.json`: normalized and runtime-validated application data.
+- `preset.json`: normalized and runtime-validated application data, with embedded
+  PNG icons (a single-file local asset bundle).
 - `metadata.json`: game version, language, and selected mod versions.
 - `script-output/`: the original prototype and localization dumps.
 - Isolated configuration, mod list, and game logs for troubleshooting.
 
-The exporter uses Factorio's `--dump-data` and `--dump-prototype-locale` commands.
+The exporter uses Factorio's `--dump-data`, `--dump-prototype-locale`, and
+`--dump-icon-sprites` commands. Icon export initializes graphics and Steam, so
+Steam must be running and a graphical macOS session must be available.
 It selects only base game, explicitly disabling bundled expansion and recycler
 mods, and checks the loaded-mod log. It does not read or modify your active mod
 settings or load any saves. All writable game paths are directed to the isolated
@@ -130,7 +135,16 @@ pnpm verify:preset .factorio-export/base-<unique suffix>/preset.json
 ```
 
 Raw exports and presets are ignored by Git: generate them locally rather than
-redistributing game data. Icons are not extracted yet.
+redistributing game data or assets. Rendered icons are embedded as PNG data URLs
+so no asset folder import, external requests, or backend is needed. Recipe icons
+are taken from the recipe export rather than inferred from the first product,
+preserving layered/composite icons rendered by Factorio. Actual modded icon
+exports still require validation in Milestone 4.
+
+To add icons to a previously generated preset, rerun `pnpm export:factorio` and
+import the new `preset.json`. Missing exported icons produce import notes and
+text-only labels. Undecodable images show an "Icon unavailable" fallback without
+removing the associated name. Only embedded PNG icons are accepted by the schema.
 
 ### Preset format and limitations
 

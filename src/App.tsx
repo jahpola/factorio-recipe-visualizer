@@ -3,6 +3,7 @@ import { parsePreset } from './data/preset'
 import type { Preset } from './data/preset'
 import { buildProductionChain } from './graph/production'
 import { ProductionGraph } from './graph/ProductionGraph'
+import { ItemIcon } from './ItemIcon'
 import './App.css'
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
       return { error: failure instanceof Error ? failure.message : String(failure) }
     }
   }, [preset, selected, choices])
+  const materials = useMemo(() => new Map(preset?.materials.map(material => [material.id, material])), [preset])
 
   async function importPreset(file: File) {
     const request = ++importRequest.current
@@ -48,7 +50,7 @@ function App() {
   const details = inspected.startsWith('recipe:')
     ? preset?.recipes.find(recipe => `recipe:${recipe.id}` === inspected)
     : undefined
-  const materialName = (id: string) => preset?.materials.find(material => material.id === id)?.displayName ?? id
+  const materialName = (id: string) => materials.get(id)?.displayName ?? id
 
   return (
     <main className="app">
@@ -92,7 +94,7 @@ function App() {
                       setChoices({})
                       setInspected(`recipe:${recipe.id}`)
                     }}>
-                      {recipe.displayName}<small>{recipe.id}</small>
+                      <ItemIcon src={recipe.icon} />{recipe.displayName}<small>{recipe.id}</small>
                     </button>
                   </li>
                 ))}
@@ -125,13 +127,18 @@ function App() {
               {result?.chain?.warnings.map(warning => <p role="status" key={warning}>{warning}</p>)}
               {details && (
                 <section className="recipe-details" aria-label="Recipe details">
-                  <h3>{details.displayName}</h3>
+                  <h3><ItemIcon src={details.icon} />{details.displayName}</h3>
                   <p>Category: {details.categories.join(', ')}</p>
                   <p>Ingredients: {details.ingredients.map(entry => materialName(entry.material)).join(', ') || 'None'}</p>
                   <p>Products: {details.products.map(entry => materialName(entry.material)).join(', ')}</p>
+                  <div className="material-icons" aria-label="Ingredient and product icons">
+                    {[...new Set([...details.ingredients, ...details.products].map(entry => entry.material))].map(id => (
+                      <span key={id}><ItemIcon src={materials.get(id)?.icon} />{materialName(id)}</span>
+                    ))}
+                  </div>
                 </section>
               )}
-              {inspected && !details && <p>Material: {materialName(inspected)}</p>}
+              {inspected && !details && <p><ItemIcon src={materials.get(inspected)?.icon} />Material: {materialName(inspected)}</p>}
             </section>
           </div>
           {preset.warnings.length > 0 && <details><summary>Import notes ({preset.warnings.length})</summary><ul>{preset.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}

@@ -3,6 +3,7 @@ import type { Preset } from '../data/preset.ts'
 export type ChainNode = {
   id: string
   label: string
+  icon?: string
   kind: 'recipe' | 'material' | 'output' | 'raw' | 'choice' | 'unresolved'
 }
 export type ChainEdge = { id: string; source: string; target: string }
@@ -42,7 +43,7 @@ export function buildProductionChain(
   function materialNode(id: string) {
     const material = materials.get(id)
     if (!material) throw new Error(`Unknown material ${id}`)
-    if (!nodes.has(id)) nodes.set(id, { id, label: material.displayName, kind: 'material' })
+    if (!nodes.has(id)) nodes.set(id, { id, label: material.displayName, icon: material.icon, kind: 'material' })
   }
   function connect(source: string, target: string) {
     const id = JSON.stringify([source, target])
@@ -55,7 +56,7 @@ export function buildProductionChain(
     const recipe = recipes.get(id)
     if (!recipe) throw new Error(`Unknown producer recipe ${id}`)
     const recipeId = `recipe:${id}`
-    nodes.set(recipeId, { id: recipeId, label: recipe.displayName, kind: 'recipe' })
+    nodes.set(recipeId, { id: recipeId, label: recipe.displayName, icon: recipe.icon, kind: 'recipe' })
     for (const product of recipe.products) {
       materialNode(product.material)
       connect(recipeId, product.material)

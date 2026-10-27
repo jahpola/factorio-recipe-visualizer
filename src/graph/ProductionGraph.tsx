@@ -3,6 +3,7 @@ import { Background, Controls, ReactFlow, ReactFlowProvider, Position } from '@x
 import type { Node, Edge } from '@xyflow/react'
 import ELK from 'elkjs/lib/elk.bundled.js'
 import type { ProductionChain } from './production'
+import { ItemIcon } from '../ItemIcon'
 import '@xyflow/react/dist/style.css'
 
 const elk = new ELK()
@@ -11,7 +12,7 @@ export function ProductionGraph({ chain, onInspect }: {
   chain: ProductionChain
   onInspect: (id: string) => void
 }) {
-  const [layout, setLayout] = useState<{ chain: ProductionChain; nodes: Node[]; edges: Edge[] }>()
+  const [layout, setLayout] = useState<{ chain: ProductionChain; version: number; nodes: Node[]; edges: Edge[] }>()
   const [error, setError] = useState<{ chain: ProductionChain; message: string }>()
 
   useEffect(() => {
@@ -24,30 +25,31 @@ export function ProductionGraph({ chain, onInspect }: {
         'elk.spacing.nodeNode': '35',
         'elk.layered.spacing.nodeNodeBetweenLayers': '90',
       },
-      children: chain.nodes.map(node => ({ id: node.id, width: 200, height: 85 })),
+      children: chain.nodes.map(node => ({ id: node.id, width: 200, height: 110 })),
       edges: chain.edges.map(edge => ({ id: edge.id, sources: [edge.source], targets: [edge.target] })),
     }).then(result => {
       if (!active) return
       const positions = new Map(result.children?.map(node => [node.id, { x: node.x ?? 0, y: node.y ?? 0 }]))
-      setLayout({
+      setLayout(previous => ({
         chain,
+        version: (previous?.version ?? 0) + 1,
         nodes: chain.nodes.map(node => ({
           id: node.id,
-          data: { label: `${node.label}\n${{
+          data: { label: <><ItemIcon src={node.icon} /><span>{node.label}<small>{{
             recipe: 'Recipe', material: 'Material', output: 'Selected output', raw: 'Raw resource',
             choice: 'Choose a producer', unresolved: 'Unresolved input',
-          }[node.kind]}` },
+          }[node.kind]}</small></span></> },
           position: positions.get(node.id)!,
           sourcePosition: Position.Right,
           targetPosition: Position.Left,
           className: `chain-node ${node.kind}`,
-          style: { width: 200, height: 85 },
+          style: { width: 200, height: 110 },
         })),
         edges: chain.edges.map(edge => ({
           ...edge,
           markerEnd: { type: 'arrowclosed' as const },
         })),
-      })
+      }))
     }).catch((failure: unknown) => {
       if (active) setError({ chain, message: `Graph layout failed: ${failure instanceof Error ? failure.message : String(failure)}` })
     })
@@ -60,7 +62,7 @@ export function ProductionGraph({ chain, onInspect }: {
     <div className="graph" aria-label="Production chain">
       <ReactFlowProvider>
         <ReactFlow
-          key={JSON.stringify([chain.nodes, chain.edges])}
+          key={layout.version}
           defaultNodes={layout.nodes}
           defaultEdges={layout.edges}
           fitView

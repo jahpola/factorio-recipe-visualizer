@@ -76,6 +76,15 @@ test('rejects unknown roots', () => {
   expect(() => buildProductionChain(fixture(), 'missing')).toThrow('Unknown recipe')
 })
 
+test('uses recipe icons for recipe nodes and material icons for material nodes', () => {
+  const preset = fixture()
+  preset.recipes[0].icon = 'recipe-icon'
+  preset.materials.find(material => material.id === 'item:electronic-circuit')!.icon = 'material-icon'
+  const chain = buildProductionChain(preset, 'electronic-circuit')
+  expect(chain.nodes.find(node => node.id === 'recipe:electronic-circuit')?.icon).toBe('recipe-icon')
+  expect(chain.nodes.find(node => node.id === 'item:electronic-circuit')?.icon).toBe('material-icon')
+})
+
 test('preserves fluid dependencies and warns about unevaluated temperature constraints', () => {
   const preset = fixture()
   preset.materials.push({ id: 'fluid:water', name: 'water', type: 'fluid', displayName: 'Water' })

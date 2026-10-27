@@ -2,6 +2,9 @@ import { z } from 'zod'
 
 const materialId = z.string().regex(/^(item|fluid):.+$/)
 const fluidId = z.string().regex(/^fluid:.+$/, 'Expected a fluid identifier (fluid:<name>)')
+// Base-game icons embed at about 16 KB; the limit leaves room for high-resolution mod icons.
+export const MAX_ICON_LENGTH = 256 * 1024
+const icon = z.string().max(MAX_ICON_LENGTH, 'Embedded icon is too large').regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, 'Expected an embedded PNG icon')
 const quantity = z.object({
   material: materialId,
   amount: z.number().nonnegative().optional(),
@@ -27,11 +30,13 @@ export const presetSchema = z.object({
     type: z.enum(['item', 'fluid']),
     name: z.string().min(1),
     displayName: z.string().min(1),
+    icon: icon.optional(),
     subgroup: z.string().optional(),
   })),
   recipes: z.array(z.object({
     id: z.string().min(1),
     displayName: z.string().min(1),
+    icon: icon.optional(),
     categories: z.array(z.string()).min(1),
     ingredients: z.array(quantity),
     products: z.array(quantity).min(1),

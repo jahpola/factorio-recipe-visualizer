@@ -283,8 +283,9 @@ hand-editing recipes.
   checksums were unchanged before and after export. No saves were loaded.
 - Installed Nullius 2.1.2 declares compatibility with Factorio 2.1 and base
   >=2.1.22. Actual modded preset support remains unverified until Milestone 4.
-- Icons and graph UI are deferred. Generated game data remains local and ignored
-  by Git; see [README.md](./README.md) for reproduction commands.
+- Graph UI was deferred to Milestone 2. Subsequent icon support exports rendered
+  sprites into optional embedded PNG fields; generated game data and assets
+  remain local and ignored by Git. See [README.md](./README.md) for commands.
 
 ### Milestone 2: Green circuit vertical slice
 
@@ -314,8 +315,20 @@ imported data.
   without browser errors. All 22 tests, type-checking, linting, frozen-lockfile
   installation, and production build pass; Vite reports a large-chunk advisory
   for the bundled layout engine.
-- Branch collapse, incremental expansion, icon import, temperature compatibility
+- Branch collapse, incremental expansion, temperature compatibility
   evaluation, and comprehensive base-game/mod coverage remain future work.
+
+#### Item and recipe icon support
+
+- Added `--dump-icon-sprites` to isolated exports and embedded rendered PNGs in
+  optional recipe/material icon fields in `preset.json`. Old presets remain valid.
+- Display icons in recipe search results, all graph nodes, recipe details, and
+  material inspection, retaining text labels and explicit missing/decode fallbacks.
+- Verified a new Factorio 2.1.23 export: all 10 green circuit graph icons, one
+  filtered recipe-list icon, and four detail icons decode successfully in the
+  integrated browser; no overflow at 1280/375/320 pixels.
+- All 27 tests, type-checking, linting, build, and old/new real-preset verification
+  pass. Native Safari and modded icon validation remain pending.
 
 ### Milestone 3: General base-game support
 
