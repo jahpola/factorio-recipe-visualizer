@@ -1,0 +1,30 @@
+.welcome {
+  width: min(100%, 48rem);
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid #48505a;
+  border-radius: 1rem;
+  background: #222830;
+}
+
+.stage {
+  color: #f0bf64;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 1rem 0;
+  font-size: clamp(1.75rem, 5vw, 3rem);
+  line-height: 1.15;
+}
+
+p {
+  line-height: 1.65;
+}
+
+.next-step {
+  margin-top: 1.5rem;
+  color: #bdc5cf;
+}
