@@ -254,9 +254,10 @@ start the Hello World application with `pnpm dev`, and pass the documented check
 - Development and production pages were verified in VS Code's integrated browser
   at widths of 1280, 375, and 320 pixels: expected content, no horizontal overflow,
   and no browser errors.
-- Native Safari 27.2 validation remains pending: after remote automation was
-  enabled, Safari WebDriver timed out connecting to a browser session. Integrated
-  browser checks do not establish Safari compatibility.
+- The user confirmed that the development page opens in native Safari 27.2.
+  Automated Safari layout and error checks remain pending: after remote automation
+  was enabled, repeated Safari WebDriver attempts timed out connecting to a browser
+  session. Integrated browser checks do not establish full Safari compatibility.
 
 ### Milestone 1: Prove game-data extraction
 
@@ -267,6 +268,26 @@ start the Hello World application with `pnpm dev`, and pass the documented check
 
 **Done when:** a repeatable procedure generates the recipe data without
 hand-editing recipes.
+
+#### Milestone 1 implementation status
+
+- Located Steam Factorio 2.1.23 and verified its built-in `--dump-data` and
+  `--dump-prototype-locale` options.
+- Added `pnpm export:factorio`: discovers the macOS Steam application, uses an
+  isolated configuration/mod directory, and exports English base-game data.
+- Explicitly disables bundled expansion/recycler mods and verifies loaded mods.
+- Generated and validated a local schema-version-1 preset containing 271
+  materials, 206 production recipes, and 12 resource/tile-fluid sources.
+- Added `pnpm verify:preset <file>` and verified the complete green circuit recipe
+  dependencies and iron/copper ore boundaries against the real export.
+- Added normalization/validation tests; all six tests, type-checking, linting,
+  and production build pass.
+- Confirmed active config.ini, mod-list.json, and mod-settings.dat SHA-256
+  checksums were unchanged before and after export. No saves were loaded.
+- Installed Nullius 2.1.2 declares compatibility with Factorio 2.1 and base
+  >=2.1.22. Actual modded preset support remains unverified until Milestone 4.
+- Icons and graph UI are deferred. Generated game data remains local and ignored
+  by Git; see [README.md](./README.md) for reproduction commands.
 
 ### Milestone 2: Green circuit vertical slice
 

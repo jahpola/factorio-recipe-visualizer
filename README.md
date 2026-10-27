@@ -60,4 +60,65 @@ testing the installed Safari browser.
 ## Current scope
 
 No game data, recipe logic, graph dependencies, backend, or database is included in
-Stage 0.
+Stage 0. Milestone 1 adds a local game-data exporter and validated preset format;
+the browser UI remains the Hello World application.
+
+## Export base-game data (Milestone 1)
+
+With the project's Node.js version selected:
+
+```sh
+pnpm export:factorio
+```
+
+The exporter discovers Factorio in the local Steam libraries on macOS. For a
+nonstandard installation, specify the application bundle explicitly:
+
+```sh
+FACTORIO_APP="/path/to/factorio.app" pnpm export:factorio
+```
+
+Each run creates a separate `.factorio-export/base-<unique suffix>/` directory
+and prints its absolute path. It contains:
+
+- `preset.json`: normalized and runtime-validated application data.
+- `metadata.json`: game version, language, and selected mod versions.
+- `script-output/`: the original prototype and localization dumps.
+- Isolated configuration, mod list, and game logs for troubleshooting.
+
+The exporter uses Factorio's `--dump-data` and `--dump-prototype-locale` commands.
+It selects only base game, explicitly disabling bundled expansion and recycler
+mods, and checks the loaded-mod log. It does not read or modify your active mod
+settings or load any saves. All writable game paths are directed to the isolated
+export directory. Failed exports return a nonzero exit code and retain diagnostic
+files.
+
+Validate the green circuit dependencies against a generated preset, substituting
+the directory printed by the exporter:
+
+```sh
+pnpm verify:preset .factorio-export/base-<unique suffix>/preset.json
+```
+
+Raw exports and presets are ignored by Git: generate them locally rather than
+redistributing game data. Icons are not extracted yet.
+
+### Preset format and limitations
+
+The version 1 schema in [src/data/preset.ts](./src/data/preset.ts) separates
+materials, recipes, and resource sources. It preserves quantities, alternative
+recipes, multiple products, probabilities, crafting categories, fluid temperature
+constraints, hidden/initially-enabled flags, localized names, and subgroups.
+Missing localization uses the internal name. Missing material references and
+malformed records fail validation instead of being treated as raw resources.
+
+The initial adapter is verified with **Factorio 2.1.23** and explicitly targets
+**2.1.x**. Non-production recipe placeholders are excluded with recorded warnings.
+Mining products and tile fluids define resource boundaries; mining-fluid
+requirements are recorded, not recursively expanded. Temperature constraints are
+preserved for future graph logic, not evaluated by this importer.
+
+The installed Nullius 2.1.2 declares Factorio 2.1 support and requires base
+>=2.1.22, which matches the installed game version. Actual Nullius export and
+normalization remain Milestone 4 work; this command intentionally exports base
+game only.
