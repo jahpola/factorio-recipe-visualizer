@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 const materialId = z.string().regex(/^(item|fluid):.+$/)
+const fluidId = z.string().regex(/^fluid:.+$/, 'Expected a fluid identifier (fluid:<name>)')
 const quantity = z.object({
   material: materialId,
   amount: z.number().nonnegative().optional(),
@@ -39,10 +40,10 @@ export const presetSchema = z.object({
     subgroup: z.string().optional(),
   })),
   sources: z.array(z.object({
-    id: z.string(),
+    id: z.string().min(1),
     kind: z.enum(['resource', 'tile-fluid']),
     products: z.array(quantity).min(1),
-    requiredFluid: materialId.optional(),
+    requiredFluid: fluidId.optional(),
   })),
   warnings: z.array(z.string()),
 }).superRefine((preset, context) => {
@@ -66,7 +67,12 @@ export const presetSchema = z.object({
       }
     }
   }
+  const sources = new Set<string>()
   for (const [index, source] of preset.sources.entries()) {
+    if (sources.has(source.id)) context.addIssue({
+      code: 'custom', path: ['sources', index, 'id'], message: 'Duplicate source ID',
+    })
+    sources.add(source.id)
     for (const material of [...source.products.map(product => product.material), ...(source.requiredFluid ? [source.requiredFluid] : [])]) {
       if (!materials.has(material)) context.addIssue({
         code: 'custom', path: ['sources', index], message: `Unknown material ${material}`,
