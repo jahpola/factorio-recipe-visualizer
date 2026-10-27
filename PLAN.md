@@ -25,30 +25,27 @@ machine construction, and research requirements. Raw resources terminate the cha
 
 ## 2. First example: green circuit production
 
-The first milestone uses the **Electronic circuit**, commonly called a green circuit.
+The first functional graph milestone (Milestone 2) uses the **Electronic circuit**,
+commonly called a green circuit.
 
 ```text
-Iron ore
-   |
-   v
-[Iron plate recipe] -- Iron plate ----------------+
-                                                 |
-                                                 v
-                                      [Electronic circuit recipe]
-                                                 |
-                                                 v
-                                         Electronic circuit
-                                                 ^
-                                                 |
-Copper ore                                       |
-   |                                             |
-   v                                             |
-[Copper plate recipe] -- Copper plate             |
-                            |                    |
-                            v                    |
-                    [Copper cable recipe]        |
-                            |                    |
-                            +-- Copper cable ----+
+Iron ore -> [Iron plate recipe] -> Iron plate --------+
+                                                    |
+                                                    v
+                                         [Electronic circuit recipe]
+                                                    |
+                                                    v
+                                             Electronic circuit
+
+Copper ore -> [Copper plate recipe] -> Copper plate
+                                           |
+                                           v
+                                   [Copper cable recipe]
+                                           |
+                                           v
+                                      Copper cable
+                                           |
+                                           +-> [Electronic circuit recipe above]
 ```
 
 Arrows follow **material flow: inputs -> production steps -> output**.
@@ -298,6 +295,27 @@ hand-editing recipes.
 
 **Done when:** selecting Electronic circuit produces the example graph from
 imported data.
+
+#### Milestone 2 implementation status
+
+- Implemented local validated preset import, recipe search by name/internal ID,
+  recipe selection, and visible game/mod metadata.
+- Added a pure dependency builder and ELK/React Flow canvas with automatic
+  left-to-right layout, pan, zoom, fit-to-view, draggable nodes, role labels, and
+  selected-output/raw-resource styling.
+- Included producer selectors for ambiguous ingredients, unresolved-input warnings,
+  basic recipe details, an accessible node summary, and cycle-safe traversal.
+- Verified the real Factorio 2.1.23 green circuit graph: exactly 10 nodes and 9
+  connections, with iron and copper ore as raw-resource boundaries.
+- Integrated-browser checks cover switching to copper cable, zoom/fit controls,
+  widths of 1280/375/320 pixels without horizontal overflow, and invalid imports
+  retaining the active preset. Native Safari graph validation remains pending.
+- Production-preview import/selection also renders the exact green circuit graph
+  without browser errors. All 22 tests, type-checking, linting, frozen-lockfile
+  installation, and production build pass; Vite reports a large-chunk advisory
+  for the bundled layout engine.
+- Branch collapse, incremental expansion, icon import, temperature compatibility
+  evaluation, and comprehensive base-game/mod coverage remain future work.
 
 ### Milestone 3: General base-game support
 

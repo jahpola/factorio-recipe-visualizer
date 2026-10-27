@@ -18,8 +18,6 @@ body {
 }
 
 #root {
-  display: grid;
   min-height: 100vh;
-  place-items: center;
-  padding: 1.5rem;
+  padding: clamp(0.75rem, 2vw, 2rem);
 }

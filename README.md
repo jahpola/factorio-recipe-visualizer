@@ -1,8 +1,8 @@
 # Factorio Recipe Visualizer
 
-A browser-based Factorio production-chain viewer. Stage 0 provides a React and
-TypeScript Hello World application; recipe import and graph rendering are planned
-in [PLAN.md](./PLAN.md).
+A browser-based Factorio production-chain viewer. Import a game-derived preset,
+search for a recipe, and explore its dependencies as a material-flow graph.
+See [PLAN.md](./PLAN.md) for milestones and acceptance criteria.
 
 ## Requirements
 
@@ -13,7 +13,7 @@ in [PLAN.md](./PLAN.md).
 
 The Node.js version is pinned in `.node-version`, and pnpm is pinned in
 `package.json`. Future version upgrades should update these pins deliberately.
-Factorio is not needed to run this Hello World application.
+Factorio is needed to generate presets, but not to view an already exported preset.
 
 ## Setup
 
@@ -31,8 +31,28 @@ The npm command only bootstraps pnpm for the selected fnm-managed Node.js versio
 Use pnpm for all project dependencies and scripts. These commands do not change
 your fnm default Node.js version.
 
-Open the URL printed by Vite in Safari. The page should display
-**Factorio Recipe Visualizer - Hello World**.
+Open the URL printed by Vite in Safari. The page displays
+**Factorio Recipe Visualizer** and a local preset import control.
+
+## View a production chain (Milestone 2)
+
+1. Generate a preset with `pnpm export:factorio` (see below).
+2. Click **Import preset (.json)** and choose the generated `preset.json`.
+3. Search for **Electronic circuit** or `electronic-circuit`.
+4. Select the recipe to display the complete green circuit chain.
+
+Arrows follow inputs -> recipes -> products. Recipe cards are blue, raw resources
+green, selected outputs purple, producer choices amber, and unresolved inputs red.
+Labels also identify each node's role. Drag the canvas to pan; use the mouse wheel
+or controls to zoom and **Fit View** to restore the full chain. Nodes can be moved.
+Click a recipe card for ingredient/product details without quantities or ratios.
+An accessible node summary is available below the canvas.
+
+If an ingredient has multiple visible producer recipes, choose one from the
+producer selectors below the graph; no alternative is silently selected. Missing
+producers remain unresolved rather than being presented as raw resources. Invalid
+imports show an error and retain the previous preset. Presets and recipe selections
+are held in memory only; reload the page to start over.
 
 ## Checks
 
@@ -45,23 +65,32 @@ pnpm build
 
 - `typecheck`: checks application and tooling TypeScript.
 - `lint`: runs the Vite template's Oxlint configuration.
-- `test`: runs the Hello World component smoke test with Vitest.
+- `test`: runs component, preset validation, normalization, and graph tests.
 - `build`: checks TypeScript and creates production assets in `dist/`.
 - `pnpm preview`: serves the production build locally after building.
 
 ## Browser validation
 
 Validate the development page and production preview in the latest stable Safari
-on macOS. Check that the heading and introductory text appear without horizontal
-overflow at desktop and narrow viewport widths, and that no console errors occur.
+on macOS. Import a real preset, select Electronic circuit, and check its ten nodes
+and nine connections, including iron/copper ore boundaries. Test recipe switching,
+pan/zoom/fit controls, invalid imports, and desktop/narrow viewport widths.
 WebKit automation is useful supplemental coverage, but is not a substitute for
 testing the installed Safari browser.
 
 ## Current scope
 
-No game data, recipe logic, graph dependencies, backend, or database is included in
-Stage 0. Milestone 1 adds a local game-data exporter and validated preset format;
-the browser UI remains the Hello World application.
+Milestone 2 adds local preset import, search/selection, graph layout with ELK.js,
+and React Flow interaction. Traversal preserves byproducts and cycle connections,
+but broader base-game/mod compatibility is not yet certified. Hidden recipes are
+excluded from the browser and upstream producer candidates. Raw resources terminate
+expansion even when recipes can also produce them.
+
+No ratios, machine counts, icons, branch collapse controls, graph persistence,
+backend, or database are included. Fluid temperature compatibility is not evaluated;
+constrained ingredients produce a warning. Large-graph performance and incremental
+expansion remain later work. The initial production bundle includes ELK's sizeable
+layout engine and currently triggers Vite's large-chunk advisory.
 
 ## Export base-game data (Milestone 1)
 
