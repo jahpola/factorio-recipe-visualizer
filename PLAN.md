@@ -344,12 +344,44 @@ imported data.
 
 ### Milestone 3: General base-game support
 
+**Status: Complete**
+
 - Support fluids, alternative recipes, byproducts, and cycles.
 - Add recipe details and branch controls.
 - Add explicit missing-data and unsupported-feature messages.
 
 **Done when:** representative base-game chains work beyond the green circuit
 example.
+
+#### Milestone 3 implementation status
+
+- Added collapse/expand controls for produced-material branches; collapsed branches
+  retain their material connection and can be reopened without losing producer
+  selections.
+- Kept fluid dependencies and alternative producer selection in the graph, and
+  distinguish unused co-products as byproducts. Recipe details label variable and
+  probabilistic outputs and show fluid temperature constraints without exposing
+  production quantities or rates.
+- Added explicit warnings for detected production cycles, unsupported fluid
+  temperature evaluation, and mining-fluid requirements. Preset import notes
+  identify excluded or otherwise unsupported data.
+- Extended `pnpm verify:preset` to verify the green circuit plus real Factorio
+  chemical-science and lubricant chains, including fluid dependencies, an
+  alternative petroleum-gas producer, a selected advanced-oil-processing branch,
+  and its byproducts. Verified against an isolated Factorio 2.1.23 base-game
+  export; cycle and branch-collapse behavior are covered by focused tests.
+- All 30 tests, type-checking, linting, and production build pass. Fluid
+  temperature compatibility and production balance remain intentionally
+  unevaluated and are reported to the user.
+- Native Safari 27.2 development and production-preview checks pass for branch
+  collapse/reopen at 1280/375 pixels, retained alternative producer selections,
+  and real advanced-oil-processing byproduct annotations. Fluid constraints,
+  variable/probabilistic output annotations, and the unsupported-temperature
+  warning pass with an explicitly supplemental modified-preset UI fixture:
+  the real base-game export contains none of those fields.
+- No captured post-load browser errors or horizontal overflow occurred at actual
+  viewport widths of 1280/375/336 pixels. Safari clamps a 320-pixel request to
+  336; startup errors, the OS file picker, and manual pan/drag remain unverified.
 
 ### Milestone 4: Mod compatibility
 

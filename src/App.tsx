@@ -13,16 +13,17 @@ function App() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [choices, setChoices] = useState<Record<string, string>>({})
+  const [collapsedBranches, setCollapsedBranches] = useState<Set<string>>(() => new Set())
   const [inspected, setInspected] = useState('')
   const importRequest = useRef(0)
   const result = useMemo(() => {
     if (!preset || !selected) return undefined
     try {
-      return { chain: buildProductionChain(preset, selected, choices) }
+      return { chain: buildProductionChain(preset, selected, choices, collapsedBranches) }
     } catch (failure) {
       return { error: failure instanceof Error ? failure.message : String(failure) }
     }
-  }, [preset, selected, choices])
+  }, [preset, selected, choices, collapsedBranches])
   const materials = useMemo(() => new Map(preset?.materials.map(material => [material.id, material])), [preset])
 
   async function importPreset(file: File) {
@@ -37,6 +38,7 @@ function App() {
       setInspected('')
       setQuery('')
       setChoices({})
+      setCollapsedBranches(new Set())
     } catch (failure) {
       if (request === importRequest.current) {
         setError(`Preset import failed: ${failure instanceof Error ? failure.message : String(failure)}`)
@@ -92,6 +94,7 @@ function App() {
                     <button aria-pressed={selected === recipe.id} onClick={() => {
                       setSelected(recipe.id)
                       setChoices({})
+                      setCollapsedBranches(new Set())
                       setInspected(`recipe:${recipe.id}`)
                     }}>
                       <ItemIcon src={recipe.icon} />{recipe.displayName}<small>{recipe.id}</small>
@@ -106,6 +109,26 @@ function App() {
               <p className="legend">Flow: inputs → recipes → products. Green: raw resource. Amber: producer choice. Red: unresolved input.</p>
               {result?.error && <p role="alert">{result.error}</p>}
               {result?.chain && <ProductionGraph chain={result.chain} onInspect={setInspected} />}
+              {result?.chain?.branches.length ? (
+                <section className="branch-controls" aria-label="Branch controls">
+                  <h3>Branch controls</h3>
+                  {result.chain.branches.map(branch => {
+                    const collapsed = collapsedBranches.has(branch.material)
+                    return (
+                      <button key={branch.material} aria-pressed={collapsed} onClick={() => {
+                        setCollapsedBranches(previous => {
+                          const next = new Set(previous)
+                          if (next.has(branch.material)) next.delete(branch.material)
+                          else next.add(branch.material)
+                          return next
+                        })
+                      }}>
+                        {collapsed ? 'Expand' : 'Collapse'} {branch.label} branch
+                      </button>
+                    )
+                  })}
+                </section>
+              ) : null}
               {result?.chain?.choices.map(choice => (
                 <label className="producer-choice" key={choice.material}>
                   Producer for {materialName(choice.material)}
@@ -129,8 +152,23 @@ function App() {
                 <section className="recipe-details" aria-label="Recipe details">
                   <h3><ItemIcon src={details.icon} />{details.displayName}</h3>
                   <p>Category: {details.categories.join(', ')}</p>
-                  <p>Ingredients: {details.ingredients.map(entry => materialName(entry.material)).join(', ') || 'None'}</p>
-                  <p>Products: {details.products.map(entry => materialName(entry.material)).join(', ')}</p>
+                  <p>Ingredients: {details.ingredients.map(entry => {
+                    const constraints = [
+                      entry.temperature !== undefined ? `at ${entry.temperature}°C` : '',
+                      entry.minimumTemperature !== undefined ? `minimum ${entry.minimumTemperature}°C` : '',
+                      entry.maximumTemperature !== undefined ? `maximum ${entry.maximumTemperature}°C` : '',
+                    ].filter(Boolean)
+                    return `${materialName(entry.material)}${constraints.length ? ` (${constraints.join(', ')})` : ''}`
+                  }).join(', ') || 'None'}</p>
+                  <p>Products: {details.products.map(entry => {
+                    const node = result?.chain?.nodes.find(candidate => candidate.id === entry.material)
+                    const qualifiers = [
+                      entry.amountMin !== undefined && entry.amountMax !== undefined && entry.amountMin !== entry.amountMax ? 'variable output' : '',
+                      entry.probability !== undefined && entry.probability < 1 ? 'probabilistic output' : '',
+                      node?.kind === 'byproduct' ? 'byproduct' : '',
+                    ].filter(Boolean)
+                    return `${materialName(entry.material)}${qualifiers.length ? ` (${qualifiers.join(', ')})` : ''}`
+                  }).join(', ')}</p>
                   <div className="material-icons" aria-label="Ingredient and product icons">
                     {[...new Set([...details.ingredients, ...details.products].map(entry => entry.material))].map(id => (
                       <span key={id}><ItemIcon src={materials.get(id)?.icon} />{materialName(id)}</span>
@@ -141,7 +179,7 @@ function App() {
               {inspected && !details && <p><ItemIcon src={materials.get(inspected)?.icon} />Material: {materialName(inspected)}</p>}
             </section>
           </div>
-          {preset.warnings.length > 0 && <details><summary>Import notes ({preset.warnings.length})</summary><ul>{preset.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
+          {preset.warnings.length > 0 && <details><summary>Import warnings and unsupported features ({preset.warnings.length})</summary><ul>{preset.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
         </>
       )}
     </main>

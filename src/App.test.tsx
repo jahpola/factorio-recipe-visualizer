@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, expect, test, vi } from 'vitest'
 import App from './App'
 import type { ProductionChain } from './graph/production'
+import type { Preset } from './data/preset'
 
 vi.mock('./graph/ProductionGraph', () => ({
   ProductionGraph: ({ chain }: { chain: ProductionChain }) => (
@@ -11,7 +12,7 @@ vi.mock('./graph/ProductionGraph', () => ({
 }))
 afterEach(cleanup)
 
-const preset = {
+const preset: Preset = {
   schemaVersion: 1, gameVersion: '2.1.23', language: 'en', mods: [{ name: 'base', version: '2.1.23' }],
   materials: [
     { id: 'item:ore', name: 'ore', type: 'item', displayName: 'Ore' },
@@ -55,4 +56,36 @@ test('reports invalid imports without discarding the active preset', async () =>
   upload('{')
   await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Preset import failed'))
   expect(screen.getByRole('searchbox')).toBeDefined()
+})
+
+test('provides branch collapse and expand controls for produced ingredients', async () => {
+  const branchedPreset = structuredClone(preset)
+  branchedPreset.materials.push({ id: 'item:concentrate', name: 'concentrate', type: 'item', displayName: 'Concentrate' })
+  branchedPreset.recipes.push({
+    id: 'concentrate', displayName: 'Make concentrate', categories: ['crafting'], hidden: false, enabledAtStart: true,
+    ingredients: [{ material: 'item:ore', amount: 1 }], products: [{ material: 'item:concentrate', amount: 1 }],
+  })
+  branchedPreset.recipes[0].ingredients.push({ material: 'item:concentrate', amount: 1 })
+  render(<App />)
+  upload(JSON.stringify(branchedPreset))
+  await screen.findByRole('searchbox', { name: 'Search recipes' })
+  fireEvent.click(screen.getByRole('button', { name: /Smelt plate/ }))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Collapse Concentrate branch' }))
+  expect(screen.getByRole('button', { name: 'Expand Concentrate branch' })).toBeDefined()
+  fireEvent.click(screen.getByRole('button', { name: 'Expand Concentrate branch' }))
+  expect(screen.getByRole('button', { name: 'Collapse Concentrate branch' })).toBeDefined()
+})
+
+test('identifies variable and probabilistic outputs without presenting production ratios', async () => {
+  const probabilisticPreset: Preset = structuredClone(preset)
+  probabilisticPreset.recipes[0].products[0] = {
+    material: 'item:plate', amountMin: 1, amountMax: 2, probability: 0.5,
+  }
+  render(<App />)
+  upload(JSON.stringify(probabilisticPreset))
+  await screen.findByRole('searchbox', { name: 'Search recipes' })
+  fireEvent.click(screen.getByRole('button', { name: /Smelt plate/ }))
+
+  expect(screen.getByLabelText('Recipe details').textContent).toContain('Plate (variable output, probabilistic output)')
 })

@@ -34,7 +34,7 @@ your fnm default Node.js version.
 Open the URL printed by Vite in Safari. The page displays
 **Factorio Recipe Visualizer** and a local preset import control.
 
-## View a production chain (Milestone 2)
+## View a production chain (Milestones 2-3)
 
 1. Generate a preset with `pnpm export:factorio` (see below).
 2. Click **Import preset (.json)** and choose the generated `preset.json`.
@@ -56,6 +56,12 @@ producers remain unresolved rather than being presented as raw resources. Invali
 imports show an error and retain the previous preset. Presets and recipe selections
 are held in memory only; reload the page to start over.
 
+Use **Branch controls** to collapse or reopen produced-material dependencies.
+Recipe details identify variable or probabilistic outputs and show fluid
+temperature constraints; unused co-products are labeled in the graph. The viewer
+does not display production quantities or rates. Cycle, temperature-evaluation,
+and mining-fluid limitations are shown as warnings where relevant.
+
 ## Checks
 
 ```sh
@@ -76,7 +82,10 @@ pnpm build
 Validate the development page and production preview in the latest stable Safari
 on macOS. Import a real preset, select Electronic circuit, and check its ten nodes
 and nine connections, including iron/copper ore boundaries. Test recipe switching,
-pan/zoom/fit controls, invalid imports, and desktop/narrow viewport widths.
+pan/zoom/fit and branch collapse/reopen controls, invalid imports, and
+desktop/narrow viewport widths. Also inspect Chemical science pack and Lubricant;
+for Lubricant, choose Advanced oil processing for Heavy oil and confirm the fluid
+inputs and additional oil products are visible.
 WebKit automation is useful supplemental coverage, but is not a substitute for
 testing the installed Safari browser.
 
@@ -102,9 +111,19 @@ session; stop the driver with Ctrl-C when finished. Do not interact with Safari
 during the automated checks.
 
 The checks cover local import, the exact green circuit graph and ore boundaries,
-image decoding, recipe switching/inspection, zoom/fit controls, invalid-import
-retention, horizontal overflow, and console/runtime errors captured **after the
-initial page renders**. The import is supplied through an in-page `File` and
+image decoding, recipe switching/inspection, zoom/fit controls, branch
+collapse/reopen at desktop/narrow widths, retained alternative producer
+selections, and real oil-processing byproduct annotations. They also cover
+invalid-import retention, horizontal overflow, and console/runtime errors captured
+**after the initial page renders**. A clearly labeled supplemental UI fixture
+modifies an in-memory copy of the imported preset to check fluid temperature
+constraints, variable/probabilistic output annotations, and the unsupported
+temperature warning; these fields are absent from the real base-game export.
+The fixture does not establish real-export support for those features or modify
+the preset file on disk. Both development and production-preview checks passed
+in native Safari 27.2 for Milestone 3.
+
+The import is supplied through an in-page `File` and
 change event, not the operating-system file picker. Startup console errors,
 manual pan/drag, and the OS file picker still require separate verification.
 Requested widths are 1280, 375, and 320 pixels; the command prints actual viewport
@@ -120,17 +139,19 @@ integrated-browser checks as native Safari evidence.
 
 ## Current scope
 
-Milestone 2 adds local preset import, search/selection, graph layout with ELK.js,
-and React Flow interaction. Traversal preserves byproducts and cycle connections,
-but broader base-game/mod compatibility is not yet certified. Hidden recipes are
-excluded from the browser and upstream producer candidates. Raw resources terminate
-expansion even when recipes can also produce them.
+Milestones 2-3 add local preset import, search/selection, graph layout with ELK.js,
+and React Flow interaction. The real Factorio 2.1.23 base-game export is verified
+with green circuit, chemical science, fluid, alternative-producer, and
+multi-output/byproduct chains. Hidden recipes are excluded from the browser and
+upstream producer candidates. Raw resources terminate expansion even when
+recipes can also produce them. This is not yet mod compatibility certification.
 
-No ratios, machine counts, branch collapse controls, graph persistence,
-backend, or database are included. Fluid temperature compatibility is not evaluated;
-constrained ingredients produce a warning. Large-graph performance and incremental
-expansion remain later work. The initial production bundle includes ELK's sizeable
-layout engine and currently triggers Vite's large-chunk advisory.
+No ratios, machine counts, graph persistence, backend, or database are included.
+Fluid temperature compatibility is not evaluated; constrained ingredients produce
+a warning. Mining-fluid dependencies are not expanded. Large-graph performance
+and incremental expansion remain later work. The initial production bundle
+includes ELK's sizeable layout engine and currently triggers Vite's large-chunk
+advisory.
 
 ## Export base-game data (Milestone 1)
 
@@ -165,8 +186,8 @@ settings or load any saves. All writable game paths are directed to the isolated
 export directory. Failed exports return a nonzero exit code and retain diagnostic
 files.
 
-Validate the green circuit dependencies against a generated preset, substituting
-the directory printed by the exporter:
+Validate the green circuit and representative fluid/alternative/byproduct chains
+against a generated preset, substituting the directory printed by the exporter:
 
 ```sh
 pnpm verify:preset .factorio-export/base-<unique suffix>/preset.json

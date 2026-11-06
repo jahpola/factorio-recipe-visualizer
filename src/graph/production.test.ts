@@ -68,8 +68,23 @@ test('terminates cycles and preserves byproducts and shared nodes', () => {
   preset.recipes[1].products.push({ material: 'item:byproduct', amount: 1 })
   const chain = buildProductionChain(preset, 'electronic-circuit')
   expect(chain.nodes.some(node => node.id === 'item:byproduct')).toBe(true)
+  expect(chain.nodes.find(node => node.id === 'item:byproduct')?.kind).toBe('byproduct')
   expect(new Set(chain.nodes.map(node => node.id)).size).toBe(chain.nodes.length)
   expect(chain.edges.some(edge => edge.source === 'item:electronic-circuit' && edge.target === 'recipe:iron-plate')).toBe(true)
+  expect(chain.warnings).toContain('A production cycle is present. The loop is shown, but its production balance is not evaluated.')
+})
+
+test('collapses and expands a selected producer branch', () => {
+  const preset = fixture()
+  const collapsed = buildProductionChain(preset, 'electronic-circuit', {}, new Set(['item:iron-plate']))
+
+  expect(collapsed.nodes.find(node => node.id === 'item:iron-plate')?.kind).toBe('collapsed')
+  expect(collapsed.nodes.some(node => node.id === 'recipe:iron-plate')).toBe(false)
+  expect(collapsed.nodes.some(node => node.id === 'item:iron-ore')).toBe(false)
+  expect(collapsed.branches).toContainEqual({ material: 'item:iron-plate', label: 'iron-plate' })
+
+  const expanded = buildProductionChain(preset, 'electronic-circuit', {}, new Set())
+  expect(expanded.nodes.some(node => node.id === 'recipe:iron-plate')).toBe(true)
 })
 
 test('rejects unknown roots', () => {
@@ -89,11 +104,13 @@ test('preserves fluid dependencies and warns about unevaluated temperature const
   const preset = fixture()
   preset.materials.push({ id: 'fluid:water', name: 'water', type: 'fluid', displayName: 'Water' })
   preset.sources.push({ id: 'tile:water', kind: 'tile-fluid', products: [{ material: 'fluid:water', amount: 1 }] })
+  preset.sources[0].requiredFluid = 'fluid:water'
   preset.recipes[1].ingredients.push({ material: 'fluid:water', amount: 1, minimumTemperature: 50 })
   const chain = buildProductionChain(preset, 'electronic-circuit')
   expect(chain.nodes.find(node => node.id === 'fluid:water')?.kind).toBe('raw')
   expect(chain.edges.some(edge => edge.source === 'fluid:water' && edge.target === 'recipe:iron-plate')).toBe(true)
   expect(chain.warnings).toContain('Fluid temperature compatibility is not evaluated yet; this graph shows dependencies, not a validated production plan.')
+  expect(chain.warnings).toContain('Mining iron-ore may require Water; mining-fluid dependencies are not expanded.')
 })
 
 test('does not silently select hidden or impossible producers', () => {

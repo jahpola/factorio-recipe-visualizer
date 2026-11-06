@@ -27,7 +27,15 @@ async function main() {
   assert.equal(chain.edges.length, 9, 'Expected exactly 9 material-flow connections')
   assert.deepEqual(chain.warnings, [], 'Green circuit chain should resolve without warnings')
   assert.deepEqual(chain.nodes.filter(node => node.kind === 'raw').map(node => node.id).sort(), ['item:copper-ore', 'item:iron-ore'])
-  console.log(`Validated schema and complete green circuit dependencies for Factorio ${preset.gameVersion}.`)
+
+  const chemicalScience = buildProductionChain(preset, 'chemical-science-pack')
+  assert.ok(chemicalScience.nodes.some(node => node.id.startsWith('fluid:')), 'Chemical science chain should include fluid dependencies')
+  assert.ok(chemicalScience.choices.some(choice => choice.material === 'fluid:petroleum-gas'), 'Chemical science chain should expose alternative petroleum gas producers')
+
+  const lubricant = buildProductionChain(preset, 'lubricant', { 'fluid:heavy-oil': 'advanced-oil-processing' })
+  assert.ok(lubricant.nodes.some(node => node.id === 'recipe:advanced-oil-processing'), 'Lubricant chain should expand the selected heavy-oil producer')
+  assert.ok(lubricant.nodes.some(node => node.kind === 'byproduct'), 'Oil processing should preserve its byproducts')
+  console.log(`Validated schema, green circuit, fluid, alternative producer, and byproduct chains for Factorio ${preset.gameVersion}.`)
 }
 
 main().catch((error: unknown) => {
