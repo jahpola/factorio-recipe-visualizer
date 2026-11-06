@@ -22,17 +22,18 @@ async function main() {
   for (const material of ['item:iron-ore', 'item:copper-ore']) {
     assert.ok(preset.sources.some(source => source.kind === 'resource' && source.products.some(product => product.material === material)), `Missing ore source ${material}`)
   }
-  const chain = buildProductionChain(preset, 'electronic-circuit')
+  const expanded = new Set(preset.materials.map(material => material.id))
+  const chain = buildProductionChain(preset, 'electronic-circuit', {}, expanded)
   assert.equal(chain.nodes.length, 10, 'Expected exactly 10 green circuit graph nodes')
   assert.equal(chain.edges.length, 9, 'Expected exactly 9 material-flow connections')
   assert.deepEqual(chain.warnings, [], 'Green circuit chain should resolve without warnings')
   assert.deepEqual(chain.nodes.filter(node => node.kind === 'raw').map(node => node.id).sort(), ['item:copper-ore', 'item:iron-ore'])
 
-  const chemicalScience = buildProductionChain(preset, 'chemical-science-pack')
+  const chemicalScience = buildProductionChain(preset, 'chemical-science-pack', {}, expanded)
   assert.ok(chemicalScience.nodes.some(node => node.id.startsWith('fluid:')), 'Chemical science chain should include fluid dependencies')
   assert.ok(chemicalScience.choices.some(choice => choice.material === 'fluid:petroleum-gas'), 'Chemical science chain should expose alternative petroleum gas producers')
 
-  const lubricant = buildProductionChain(preset, 'lubricant', { 'fluid:heavy-oil': 'advanced-oil-processing' })
+  const lubricant = buildProductionChain(preset, 'lubricant', { 'fluid:heavy-oil': 'advanced-oil-processing' }, expanded)
   assert.ok(lubricant.nodes.some(node => node.id === 'recipe:advanced-oil-processing'), 'Lubricant chain should expand the selected heavy-oil producer')
   assert.ok(lubricant.nodes.some(node => node.kind === 'byproduct'), 'Oil processing should preserve its byproducts')
   console.log(`Validated schema, green circuit, fluid, alternative producer, and byproduct chains for Factorio ${preset.gameVersion}.`)

@@ -34,17 +34,18 @@ your fnm default Node.js version.
 Open the URL printed by Vite in Safari. The page displays
 **Factorio Recipe Visualizer** and a local preset import control.
 
-## View a production chain (Milestones 2-3)
+## View a production chain (Milestones 2-4)
 
 1. Generate a preset with `pnpm export:factorio` (see below).
 2. Click **Import preset (.json)** and choose the generated `preset.json`.
 3. Search for **Electronic circuit** or `electronic-circuit`.
-4. Select the recipe to display the complete green circuit chain.
+4. Select the recipe, then expand the iron plate, copper cable, and copper
+   plate branches to display the complete green circuit chain.
 
 Arrows follow inputs -> recipes -> products. Recipe cards are blue, raw resources
 green, selected outputs purple, producer choices amber, and unresolved inputs red.
 Labels also identify each node's role. Drag the canvas to pan; use the mouse wheel
-or controls to zoom and **Fit View** to restore the full chain. Nodes can be moved.
+or controls to zoom and **Fit View** to restore the visible chain. Nodes can be moved.
 Click a recipe card for ingredient/product details without quantities or ratios.
 New exports include game-rendered recipe, item, and fluid icons in the browser,
 graph, and details panel. Older presets without icons still work with text labels.
@@ -56,7 +57,9 @@ producers remain unresolved rather than being presented as raw resources. Invali
 imports show an error and retain the previous preset. Presets and recipe selections
 are held in memory only; reload the page to start over.
 
-Use **Branch controls** to collapse or reopen produced-material dependencies.
+Produced-material branches start collapsed and can be expanded one at a time;
+there is no fixed graph-size cap. A branch with multiple producers requires a
+selection before it can expand. Expanded branches can be collapsed and reopened.
 Recipe details identify variable or probabilistic outputs and show fluid
 temperature constraints; unused co-products are labeled in the graph. The viewer
 does not display production quantities or rates. Cycle, temperature-evaluation,
@@ -73,17 +76,19 @@ pnpm build
 
 - `typecheck`: checks application and tooling TypeScript.
 - `lint`: runs the Vite template's Oxlint configuration.
-- `test`: runs component, preset validation, normalization, and graph tests.
+- `test`: runs component, preset validation, normalization, graph, and exporter
+  dependency-resolution tests.
 - `build`: checks TypeScript and creates production assets in `dist/`.
 - `pnpm preview`: serves the production build locally after building.
 
 ## Browser validation
 
 Validate the development page and production preview in the latest stable Safari
-on macOS. Import a real preset, select Electronic circuit, and check its ten nodes
-and nine connections, including iron/copper ore boundaries. Test recipe switching,
-pan/zoom/fit and branch collapse/reopen controls, invalid imports, and
-desktop/narrow viewport widths. Also inspect Chemical science pack and Lubricant;
+on macOS. Import a real base-game preset, select Electronic circuit, and check
+that it starts with the root recipe and direct inputs, then expands to ten nodes
+and nine connections including iron/copper ore boundaries. Test recipe switching,
+pan/zoom/fit and progressive branch expansion/collapse controls, invalid imports,
+and desktop/narrow viewport widths. Also inspect Chemical science pack and Lubricant;
 for Lubricant, choose Advanced oil processing for Heavy oil and confirm the fluid
 inputs and additional oil products are visible.
 WebKit automation is useful supplemental coverage, but is not a substitute for
@@ -110,7 +115,8 @@ After `pnpm build`, start `pnpm preview` and repeat with its URL (normally
 session; stop the driver with Ctrl-C when finished. Do not interact with Safari
 during the automated checks.
 
-The checks cover local import, the exact green circuit graph and ore boundaries,
+The checks cover local import, progressive expansion to the exact green circuit
+graph and ore boundaries,
 image decoding, recipe switching/inspection, zoom/fit controls, branch
 collapse/reopen at desktop/narrow widths, retained alternative producer
 selections, and real oil-processing byproduct annotations. They also cover
@@ -139,19 +145,22 @@ integrated-browser checks as native Safari evidence.
 
 ## Current scope
 
-Milestones 2-3 add local preset import, search/selection, graph layout with ELK.js,
-and React Flow interaction. The real Factorio 2.1.23 base-game export is verified
+Milestones 2-4 add local preset import, search/selection, graph layout with ELK.js,
+and React Flow interaction. The real Factorio 2.1.24 base-game export is verified
 with green circuit, chemical science, fluid, alternative-producer, and
 multi-output/byproduct chains. Hidden recipes are excluded from the browser and
 upstream producer candidates. Raw resources terminate expansion even when
-recipes can also produce them. This is not yet mod compatibility certification.
+recipes can also produce them. Nullius 2.1.2 is separately verified against a
+Factorio 2.1.24 export for alternatives, a production cycle, and multi-output
+byproducts. The mod-selection exporter is data-driven, but this is not a blanket
+compatibility certification for untested mods.
 
 No ratios, machine counts, graph persistence, backend, or database are included.
 Fluid temperature compatibility is not evaluated; constrained ingredients produce
-a warning. Mining-fluid dependencies are not expanded. Large-graph performance
-and incremental expansion remain later work. The initial production bundle
-includes ELK's sizeable layout engine and currently triggers Vite's large-chunk
-advisory.
+a warning. Mining-fluid dependencies are not expanded. Dependency graphs now
+expand progressively without an arbitrary node cap; fully expanding a very large
+modded chain may still take time. The initial production bundle includes ELK's
+sizeable layout engine and currently triggers Vite's large-chunk advisory.
 
 ## Export base-game data (Milestone 1)
 
@@ -198,12 +207,47 @@ redistributing game data or assets. Rendered icons are embedded as PNG data URLs
 so no asset folder import, external requests, or backend is needed. Recipe icons
 are taken from the recipe export rather than inferred from the first product,
 preserving layered/composite icons rendered by Factorio. Actual modded icon
-exports still require validation in Milestone 4.
+rendering has not been validated in the browser.
 
 To add icons to a previously generated preset, rerun `pnpm export:factorio` and
 import the new `preset.json`. Missing exported icons produce import notes and
 text-only labels. Undecodable images show an "Icon unavailable" fallback without
 removing the associated name. Only embedded PNG icons are accepted by the schema.
+
+## Export a mod configuration (Milestone 4)
+
+The exporter can create a separate preset for an explicit combination of
+locally installed mods. For example:
+
+```sh
+pnpm export:factorio --mods nullius
+```
+
+By default, the exporter reads mod archives from
+`~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS` to another
+mod directory when needed. Required dependencies are resolved recursively and
+copied into a new isolated export directory; optional dependencies are not
+enabled automatically. Missing required mods and ambiguous duplicate installed
+versions fail explicitly. The active mod list, settings, and saves are not read
+or modified. The exporter checks the actual loaded mod set on every dump step, compares
+logged code-mod versions with the selected archives, and records the resolved
+configuration and exact archive versions in `metadata.json` and `preset.json`.
+The directory must contain Factorio-format `<name>_<version>.zip` archives; if
+multiple versions of a mod are present, point `FACTORIO_MODS` at a directory
+containing the intended versions.
+
+The generated preset is under
+`.factorio-export/mods-nullius-<unique suffix>/preset.json`. Validate the real
+Nullius production chain with:
+
+```sh
+pnpm verify:mod-preset .factorio-export/mods-nullius-<unique suffix>/preset.json
+```
+
+This verification checks the installed Nullius catalog for alternative
+producers, a representative cycle, and multi-output byproducts. Generate each
+mod combination separately; never combine base-game and modded recipes into one
+preset. Raw exports, presets, and game assets remain local and ignored by Git.
 
 ### Preset format and limitations
 
@@ -221,6 +265,6 @@ requirements are recorded, not recursively expanded. Temperature constraints are
 preserved for future graph logic, not evaluated by this importer.
 
 The installed Nullius 2.1.2 declares Factorio 2.1 support and requires base
->=2.1.22, which matches the installed game version. Actual Nullius export and
-normalization remain Milestone 4 work; this command intentionally exports base
-game only.
+>=2.1.22. It has been exported and normalized against the installed Factorio
+2.1.24 build with its required local dependencies. The default exporter command
+still exports base game only; request modded data explicitly with `--mods`.

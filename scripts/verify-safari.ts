@@ -63,7 +63,7 @@ async function main() {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     `, [contents])
   }
-  async function greenCircuit() {
+  async function completeGreenCircuit() {
     await waitFor('return document.querySelectorAll(".react-flow__node").length === 10 && document.querySelectorAll(".react-flow__edge").length === 9')
     assert.deepEqual(await execute(`
       return [...document.querySelectorAll(".react-flow__node.raw")].map(node => node.dataset.id).sort()
@@ -71,6 +71,14 @@ async function main() {
     await waitFor(`return [...document.querySelectorAll("img")].every(image => image.complete)`)
     assert.equal(await execute('return [...document.images].filter(image => !image.naturalWidth).length'), 0, 'Images must decode')
     assert.equal(await execute('return document.querySelectorAll(".icon-unavailable").length'), 0, 'No icon decode fallbacks')
+  }
+  async function greenCircuit() {
+    await waitFor('return document.querySelectorAll(".react-flow__node").length === 4 && document.querySelectorAll(".react-flow__edge").length === 3')
+    assert.equal(await execute('return [...document.querySelectorAll(".react-flow__node.collapsed")].some(node => node.dataset.id === "item:iron-plate")'), true, 'Producer branches start collapsed')
+    await branch('Expand', 'item:iron-plate')
+    await branch('Expand', 'item:copper-cable')
+    await branch('Expand', 'item:copper-plate')
+    await completeGreenCircuit()
   }
   async function selectRecipe(id: string) {
     await execute(`
@@ -158,7 +166,7 @@ async function main() {
         !!document.querySelector('.react-flow__node.collapsed[data-id="item:iron-plate"]') &&
         !document.querySelector('.react-flow__node[data-id="recipe:iron-plate"]')`)
       await branch('Expand', 'item:iron-plate')
-      await greenCircuit()
+      await completeGreenCircuit()
     }
 
     await selectRecipe('lubricant')
@@ -175,7 +183,8 @@ async function main() {
       assert.equal(await execute(`return !!document.querySelector(${JSON.stringify(`.react-flow__node.raw[data-id="${material}"]`)})`), true)
     }
     await branch('Collapse', 'fluid:heavy-oil')
-    await waitFor('return document.querySelectorAll(".react-flow__node").length === 3 && !document.querySelector(".producer-choice select")')
+    await waitFor(`return document.querySelectorAll(".react-flow__node").length === 3 &&
+      document.querySelector(".producer-choice select")?.value === "advanced-oil-processing"`)
     await branch('Expand', 'fluid:heavy-oil')
     await waitFor(`return document.querySelectorAll(".react-flow__node").length === 8 &&
       document.querySelector(".producer-choice select")?.value === "advanced-oil-processing"`)
@@ -215,6 +224,7 @@ async function main() {
     await importFile(text)
     await waitFor('return document.querySelector(".chain h2")?.textContent === "Select a recipe"')
     await selectRecipe('copper-cable')
+    await branch('Expand', 'item:copper-plate')
     await waitFor('return document.querySelectorAll(".react-flow__node").length === 5 && document.querySelectorAll(".react-flow__edge").length === 4')
     await importFile('{ invalid json')
     await waitFor('return document.querySelector("[role=alert]")?.textContent.includes("Preset import failed")')

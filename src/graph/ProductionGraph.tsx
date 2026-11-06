@@ -37,7 +37,7 @@ export function ProductionGraph({ chain, onInspect }: {
           id: node.id,
           data: { label: <><ItemIcon src={node.icon} /><span>{node.label}<small>{{
             recipe: 'Recipe', material: 'Material', output: 'Selected output', raw: 'Raw resource',
-            choice: 'Choose a producer', unresolved: 'Unresolved input', collapsed: 'Branch collapsed',
+            choice: 'Choose a producer', unresolved: 'Unresolved input', collapsed: 'Expand branch',
             byproduct: 'Additional output',
           }[node.kind]}</small></span></> },
           position: positions.get(node.id)!,

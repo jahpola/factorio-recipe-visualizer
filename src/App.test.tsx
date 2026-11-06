@@ -71,10 +71,38 @@ test('provides branch collapse and expand controls for produced ingredients', as
   await screen.findByRole('searchbox', { name: 'Search recipes' })
   fireEvent.click(screen.getByRole('button', { name: /Smelt plate/ }))
 
-  fireEvent.click(screen.getByRole('button', { name: 'Collapse Concentrate branch' }))
   expect(screen.getByRole('button', { name: 'Expand Concentrate branch' })).toBeDefined()
   fireEvent.click(screen.getByRole('button', { name: 'Expand Concentrate branch' }))
-  expect(screen.getByRole('button', { name: 'Collapse Concentrate branch' })).toBeDefined()
+  expect(screen.getByLabelText('Production chain').textContent).toContain('Make concentrate')
+  fireEvent.click(screen.getByRole('button', { name: 'Collapse Concentrate branch' }))
+  expect(screen.getByRole('button', { name: 'Expand Concentrate branch' })).toBeDefined()
+  expect(screen.getByLabelText('Production chain').textContent).not.toContain('Make concentrate')
+})
+
+test('requires a producer choice before expanding an alternative branch', async () => {
+  const branchedPreset = structuredClone(preset)
+  branchedPreset.materials.push({ id: 'item:concentrate', name: 'concentrate', type: 'item', displayName: 'Concentrate' })
+  branchedPreset.recipes[0].ingredients.push({ material: 'item:concentrate', amount: 1 })
+  branchedPreset.recipes.push(
+    {
+      id: 'concentrate', displayName: 'Make concentrate', categories: ['crafting'], hidden: false, enabledAtStart: true,
+      ingredients: [{ material: 'item:ore', amount: 1 }], products: [{ material: 'item:concentrate', amount: 1 }],
+    },
+    {
+      id: 'concentrate-alt', displayName: 'Alternate concentrate', categories: ['crafting'], hidden: false, enabledAtStart: true,
+      ingredients: [{ material: 'item:ore', amount: 1 }], products: [{ material: 'item:concentrate', amount: 1 }],
+    },
+  )
+  render(<App />)
+  upload(JSON.stringify(branchedPreset))
+  await screen.findByRole('searchbox', { name: 'Search recipes' })
+  fireEvent.click(screen.getByRole('button', { name: /Smelt plate/ }))
+
+  const expand = screen.getByRole('button', { name: 'Expand Concentrate branch' }) as HTMLButtonElement
+  expect(expand.disabled).toBe(true)
+  fireEvent.change(screen.getByLabelText('Producer for Concentrate'), { target: { value: 'concentrate-alt' } })
+  expect(screen.getByLabelText('Production chain').textContent).toContain('Alternate concentrate')
+  expect(screen.getByLabelText('Production chain').textContent).not.toContain('Make concentrate')
 })
 
 test('identifies variable and probabilistic outputs without presenting production ratios', async () => {

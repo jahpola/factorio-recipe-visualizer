@@ -19,7 +19,7 @@ export function buildProductionChain(
   preset: Preset,
   rootId: string,
   selections: Record<string, string> = {},
-  collapsedMaterials: ReadonlySet<string> = new Set(),
+  expandedMaterials: ReadonlySet<string> = new Set(),
 ): ProductionChain {
   const recipes = new Map(preset.recipes.map(recipe => [recipe.id, recipe]))
   if (!recipes.has(rootId)) throw new Error(`Unknown recipe ${rootId}`)
@@ -41,10 +41,10 @@ export function buildProductionChain(
   const branches = new Map<string, ProductionChain['branches'][number]>()
   const warnings = new Set<string>()
   const expandedRecipes = new Set<string>()
-  const expandedMaterials = new Set<string>()
   const requiredMaterials = new Set<string>()
   const producedMaterials = new Set<string>()
   const pending = [rootId]
+  let pendingIndex = 0
   function materialNode(id: string) {
     const material = materials.get(id)
     if (!material) throw new Error(`Unknown material ${id}`)
@@ -54,8 +54,8 @@ export function buildProductionChain(
     const id = JSON.stringify([source, target])
     edges.set(id, { id, source, target })
   }
-  while (pending.length) {
-    const id = pending.shift()!
+  while (pendingIndex < pending.length) {
+    const id = pending[pendingIndex++]
     if (expandedRecipes.has(id)) continue
     expandedRecipes.add(id)
     const recipe = recipes.get(id)
@@ -74,8 +74,6 @@ export function buildProductionChain(
       if (ingredient.temperature !== undefined || ingredient.minimumTemperature !== undefined || ingredient.maximumTemperature !== undefined) {
         warnings.add('Fluid temperature compatibility is not evaluated yet; this graph shows dependencies, not a validated production plan.')
       }
-      if (expandedMaterials.has(ingredient.material)) continue
-      expandedMaterials.add(ingredient.material)
       const node = nodes.get(ingredient.material)!
       if (raw.has(ingredient.material)) {
         node.kind = 'raw'
@@ -87,20 +85,21 @@ export function buildProductionChain(
         throw new Error(`Invalid producer ${selection} for ${ingredient.material}`)
       }
       if (candidates.length) branches.set(ingredient.material, { material: ingredient.material, label: node.label })
-      if (collapsedMaterials.has(ingredient.material)) {
-        node.kind = 'collapsed'
+      if (!candidates.length) {
+        node.kind = 'unresolved'
+        warnings.add(`No visible producer or raw-resource source for ${node.label} (${node.id}).`)
         continue
       }
       if (candidates.length > 1) {
         choices.set(ingredient.material, { material: ingredient.material, recipes: candidates })
       }
+      if (!expandedMaterials.has(ingredient.material)) {
+        node.kind = candidates.length > 1 && !selection ? 'choice' : 'collapsed'
+        continue
+      }
       const producer = selection ?? (candidates.length === 1 ? candidates[0].id : undefined)
       if (producer) pending.push(producer)
-      else if (candidates.length > 1) node.kind = 'choice'
-      else {
-        node.kind = 'unresolved'
-        warnings.add(`No visible producer or raw-resource source for ${node.label} (${node.id}).`)
-      }
+      else node.kind = 'choice'
     }
   }
   for (const material of producedMaterials) {
@@ -140,18 +139,27 @@ function containsCycle(nodeIds: string[], edges: ChainEdge[]) {
     targets.push(edge.target)
     outgoing.set(edge.source, targets)
   }
-  const visited = new Set<string>()
-  const active = new Set<string>()
-  function visit(id: string): boolean {
-    if (active.has(id)) return true
-    if (visited.has(id)) return false
-    visited.add(id)
-    active.add(id)
-    for (const target of outgoing.get(id) ?? []) {
-      if (visit(target)) return true
+  const states = new Map<string, 'active' | 'done'>()
+  for (const start of nodeIds) {
+    if (states.has(start)) continue
+    states.set(start, 'active')
+    const stack = [{ id: start, next: 0 }]
+    while (stack.length) {
+      const current = stack[stack.length - 1]
+      const targets = outgoing.get(current.id) ?? []
+      if (current.next === targets.length) {
+        states.set(current.id, 'done')
+        stack.pop()
+        continue
+      }
+      const target = targets[current.next++]
+      const state = states.get(target)
+      if (state === 'active') return true
+      if (state !== 'done') {
+        states.set(target, 'active')
+        stack.push({ id: target, next: 0 })
+      }
     }
-    active.delete(id)
-    return false
   }
-  return nodeIds.some(visit)
+  return false
 }
