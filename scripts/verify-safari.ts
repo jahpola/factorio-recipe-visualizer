@@ -63,6 +63,21 @@ async function main() {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     `, [contents])
   }
+  async function captureErrors() {
+    await execute(`
+      window.__safariErrors = [];
+      addEventListener('error', event => window.__safariErrors.push(event.message || 'Resource load failed'), true);
+      addEventListener('unhandledrejection', event => window.__safariErrors.push(String(event.reason)));
+      const original = console.error;
+      console.error = (...args) => {
+        window.__safariErrors.push(args.map(String).join(' '));
+        original.apply(console, args);
+      };
+    `)
+  }
+  async function waitForRemembered() {
+    await waitFor('return document.querySelector(".saved-preset")?.textContent.includes("Remembered on this browser.")')
+  }
   async function greenCircuit() {
     await waitFor('return document.querySelectorAll(".react-flow__node").length === 10 && document.querySelectorAll(".react-flow__edge").length === 9')
     assert.deepEqual(await execute(`
@@ -115,19 +130,13 @@ async function main() {
     console.log(`Native Safari ${session.capabilities.browserVersion}: ${url.href}`)
     await command(`${root}/url`, 'POST', { url: url.href })
     await waitFor('return document.querySelector("h1")?.textContent === "Factorio Recipe Visualizer"')
+    await waitFor(`return ![...document.querySelectorAll('[role="status"]')]
+      .some(node => node.textContent === 'Restoring saved preset...')`)
     // Classic Safari WebDriver has no console-log endpoint. Capture errors from here onward.
-    await execute(`
-      window.__safariErrors = [];
-      addEventListener('error', event => window.__safariErrors.push(event.message || 'Resource load failed'), true);
-      addEventListener('unhandledrejection', event => window.__safariErrors.push(String(event.reason)));
-      const original = console.error;
-      console.error = (...args) => {
-        window.__safariErrors.push(args.map(String).join(' '));
-        original.apply(console, args);
-      };
-    `)
+    await captureErrors()
     await checkLayout('Empty page')
     await importFile(text)
+    await waitForRemembered()
     await waitFor('return !!document.querySelector(".preset-info")')
     await execute(`
       const input = document.querySelector('#recipe-search');
@@ -220,10 +229,46 @@ async function main() {
     await waitFor('return document.querySelector("[role=alert]")?.textContent.includes("Preset import failed")')
     assert.equal(await execute('return document.querySelectorAll(".react-flow__node").length'), 5, 'Invalid import must retain the graph')
     assert.deepEqual(await execute('return window.__safariErrors'), [], 'Captured browser errors')
-    console.log('PASS: import, 10 nodes/9 edges, ore boundaries, image decoding, zoom/fit, inspection, branch collapse/reopen, retained producer selection, real oil byproduct details, supplemental detail annotations, recipe switching, invalid-import retention, and post-load error capture.')
+    await waitForRemembered()
+    await command(`${root}/refresh`, 'POST', {})
+    await waitForRemembered()
+    await captureErrors()
+    assert.equal(await execute('return document.querySelector(".chain h2").textContent'), 'Select a recipe', 'Reload restores only the dataset')
+    assert.equal(await execute('return document.querySelector("#recipe-search").value'), '', 'Reload clears search')
+    assert.equal(await execute('return document.querySelectorAll(".react-flow__node").length'), 0, 'Reload does not restore graph selection')
+    assert.equal(await execute('return document.querySelector(".saved-preset").textContent.includes("preset.json")'), true, 'Restores filename')
+    assert.equal(await execute('return document.querySelector(".preset-info").textContent.includes(arguments[0])', [preset.gameVersion]), true, 'Restores metadata')
+    await selectRecipe('electronic-circuit')
+    await greenCircuit()
+    await checkLayout('Restored preset')
+    await click('header > button')
+    await waitFor('return !document.querySelector("header > button")')
+    await greenCircuit()
+    assert.deepEqual(await execute('return window.__safariErrors'), [], 'Captured errors after restoration')
+    await command(`${root}/refresh`, 'POST', {})
+    await waitFor(`return !!document.querySelector(".empty") && ![...document.querySelectorAll('[role="status"]')]
+      .some(node => node.textContent === 'Restoring saved preset...')`)
+    assert.equal(await execute('return !!document.querySelector("#recipe-search")'), false, 'Forget leaves the next visit empty')
+    console.log('PASS: import, 10 nodes/9 edges, ore boundaries, image decoding, zoom/fit, inspection, branch collapse/reopen, retained producer selection, real oil byproduct details, supplemental detail annotations, recipe switching, invalid-import retention, IndexedDB reload restoration, forget-without-clearing, and post-load error capture.')
     console.log('Not covered: startup console errors, OS file picker, manual pan/drag, or viewports Safari refuses to create.')
   } finally {
-    await command(root, 'DELETE')
+    try {
+      await waitFor(`return ![...document.querySelectorAll('[role="status"]')].some(node =>
+        ['Restoring saved preset...', 'Importing preset...', 'Saving preset on this browser...', 'Forgetting saved preset...'].includes(node.textContent))`)
+      const error = await command(`${root}/execute/async`, 'POST', {
+        script: `
+          const done = arguments[arguments.length - 1];
+          const request = indexedDB.deleteDatabase('factorio-recipe-visualizer');
+          request.onsuccess = () => done(null);
+          request.onerror = () => done(String(request.error));
+          request.onblocked = () => done('Test storage cleanup was blocked.');
+        `,
+        args: [],
+      })
+      assert.equal(error, null, 'Remove saved test data, including supplemental fixtures')
+    } finally {
+      await command(root, 'DELETE')
+    }
   }
 }
 

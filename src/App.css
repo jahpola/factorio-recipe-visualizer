@@ -11,6 +11,12 @@ button { cursor: pointer; }
 button:hover, button[aria-pressed="true"] { border-color: #f0bf64; background: #343025; }
 :focus-visible { outline: 2px solid #f0bf64; outline-offset: 3px; }
 .import { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.import-area { border: 2px dashed #596573; border-radius: 0.75rem; padding: 1rem; }
+.import-area:focus-within, .import-area:hover { border-color: #f0bf64; }
+.import-area p:last-child { margin-bottom: 0; }
+.import-help { color: #bdc5cf; font-size: 0.9rem; }
+.saved-preset, .import-help code { overflow-wrap: anywhere; }
+button:disabled { cursor: wait; opacity: 0.6; }
 .workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 1.5rem; }
 .browser, .chain, .empty { background: #1d232b; padding: 1.25rem; border: 1px solid #48505a; border-radius: 0.75rem; min-width: 0; }
 .recipe-list { list-style: none; padding: 0; max-height: 650px; overflow-y: auto; }
