@@ -6,6 +6,7 @@ import path from 'node:path'
 import { loadLocalMods, parseModSelection, resolveModDependencies } from './factorio-mods.ts'
 import { normalizeDump } from '../src/data/normalize.ts'
 import { embedIcons } from './icons.ts'
+import { finderRevealCommand } from './export-instructions.ts'
 
 async function main() {
   const requestedMods = parseModSelection(process.argv.slice(2))
@@ -82,10 +83,13 @@ async function main() {
     recipes: await readJson('recipe-locale.json'),
   })
   const withIcons = await embedIcons(preset, path.join(run, 'script-output'))
-  await writeFile(path.join(run, 'preset.json'), JSON.stringify(withIcons, null, 2))
+  const filename = path.join(run, 'preset.json')
+  await writeFile(filename, JSON.stringify(withIcons, null, 2))
   console.log(`Validated ${preset.materials.length} materials, ${preset.recipes.length} recipes, ${preset.sources.length} sources.`)
   for (const warning of withIcons.warnings) console.warn(warning)
   console.log(`Export complete: ${run}`)
+  console.log(`Import this preset: ${filename}`)
+  console.log(`Reveal in Finder: ${finderRevealCommand(filename)}`)
 }
 
 main().catch((error: unknown) => {

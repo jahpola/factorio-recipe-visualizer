@@ -37,7 +37,8 @@ Open the URL printed by Vite in Safari. The page displays
 ## View a production chain (Milestones 2-4)
 
 1. Generate a preset with `pnpm export:factorio` (see below).
-2. Click **Import preset (.json)** and choose the generated `preset.json`.
+2. Click **Import preset (.json)** and choose the generated `preset.json`, or
+   drag that file from Finder into the import area.
 3. Search for **Electronic circuit** or `electronic-circuit`.
 4. Select the recipe, then expand the iron plate, copper cable, and copper
    plate branches to display the complete green circuit chain.
@@ -54,8 +55,32 @@ An accessible node summary is available below the canvas.
 If an ingredient has multiple visible producer recipes, choose one from the
 producer selectors below the graph; no alternative is silently selected. Missing
 producers remain unresolved rather than being presented as raw resources. Invalid
-imports show an error and retain the previous preset. Presets and recipe selections
-are held in memory only; reload the page to start over.
+imports show an error and retain the previous preset and its saved browser copy.
+
+### Easier loading on macOS
+
+Exports live in the hidden `.factorio-export/` folder. In the file picker, press
+**Cmd+Shift+.** to show hidden folders, or **Cmd+Shift+G** and paste the absolute
+export directory printed by `pnpm export:factorio`. The exporter also prints the
+full preset path and a copyable `open -R '.../preset.json'` command to reveal it in
+Finder. You can then drag the file into the import area. Finder does not open
+automatically, and exports stay in their isolated, Git-ignored directories.
+
+Each valid import is automatically remembered in **IndexedDB on this browser**,
+including its embedded icons. Reloading restores that dataset, but not the
+selected recipe, search, producer choices, or collapsed branches. The filename
+and saved-state message identify the current import. **Forget saved preset**
+deletes the browser copy without clearing the current dataset or graph; reload
+after forgetting to start empty.
+
+Storage is local to the browser and page origin (scheme, hostname, and port);
+switching between `localhost` and `127.0.0.1`, or between development and preview
+ports, uses separate storage. Nothing is uploaded. Private browsing, clearing
+browser data, or browser storage eviction can prevent restoration. Storage errors
+are shown explicitly: a valid import remains usable for the current session even
+if saving fails, and an older saved dataset may remain. Invalid saved data shows
+a recovery message; import another file or use the forget action to remove it.
+Importing does not watch the original file: reimport after exporting new data.
 
 Produced-material branches start collapsed and can be expanded one at a time;
 there is no fixed graph-size cap. A branch with multiple producers requires a
@@ -80,6 +105,14 @@ pnpm build
   dependency-resolution tests.
 - `build`: checks TypeScript and creates production assets in `dist/`.
 - `pnpm preview`: serves the production build locally after building.
+
+To additionally test browser-storage serialization with a real icon-bearing export:
+
+```sh
+FACTORIO_PRESET="/absolute/path/to/preset.json" pnpm test scripts/preset-storage.integration.test.ts
+```
+
+This uses an IndexedDB emulator, not a native browser.
 
 ## Browser validation
 
@@ -120,14 +153,19 @@ graph and ore boundaries,
 image decoding, recipe switching/inspection, zoom/fit controls, branch
 collapse/reopen at desktop/narrow widths, retained alternative producer
 selections, and real oil-processing byproduct annotations. They also cover
-invalid-import retention, horizontal overflow, and console/runtime errors captured
+invalid-import retention, IndexedDB restoration after reload, forgetting without
+clearing the current graph, horizontal overflow, and console/runtime errors captured
 **after the initial page renders**. A clearly labeled supplemental UI fixture
 modifies an in-memory copy of the imported preset to check fluid temperature
 constraints, variable/probabilistic output annotations, and the unsupported
 temperature warning; these fields are absent from the real base-game export.
 The fixture does not establish real-export support for those features or modify
-the preset file on disk. Both development and production-preview checks passed
-in native Safari 27.2 for Milestone 3.
+the preset file on disk. Saved test data is removed at the end of the session.
+The original Milestone 3 checks and the added loading-improvement reload/forget
+checks passed in native Safari 27.2 against both development and production
+preview. An initial session-creation timeout was resolved on retry.
+Finder reveal, hidden-folder picker shortcuts, and native file dragging remain
+pending manual verification.
 
 The import is supplied through an in-page `File` and
 change event, not the operating-system file picker. Startup console errors,
@@ -155,7 +193,7 @@ Factorio 2.1.24 export for alternatives, a production cycle, and multi-output
 byproducts. The mod-selection exporter is data-driven, but this is not a blanket
 compatibility certification for untested mods.
 
-No ratios, machine counts, graph persistence, backend, or database are included.
+No ratios, machine counts, graph persistence, backend, or server database are included.
 Fluid temperature compatibility is not evaluated; constrained ingredients produce
 a warning. Mining-fluid dependencies are not expanded. Dependency graphs now
 expand progressively without an arbitrary node cap; fully expanding a very large
