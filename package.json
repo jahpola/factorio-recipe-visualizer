@@ -13,6 +13,7 @@
     "verify:preset": "node scripts/verify-preset.ts",
     "verify:mod-preset": "node scripts/verify-mod-preset.ts",
     "verify:safari": "node scripts/verify-safari.ts",
+    "verify:safari-large": "node scripts/verify-safari-large.ts",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",

@@ -59,6 +59,43 @@ describe('Factorio 2.1 normalization', () => {
     })
   })
 
+  test('records minable trees, rocks, and fish as entity sources', () => {
+    const raw = {
+      ...fixture(),
+      item: {
+        ...fixture().item,
+        wood: { type: 'item', name: 'wood', stack_size: 100 },
+        stone: { type: 'item', name: 'stone', stack_size: 50 },
+        coal: { type: 'item', name: 'coal', stack_size: 50 },
+      },
+      tree: { 'tree-01': { type: 'tree', name: 'tree-01', minable: { result: 'wood', count: 4 } } },
+      'simple-entity': {
+        'huge-rock': {
+          type: 'simple-entity', name: 'huge-rock',
+          minable: { results: [{ type: 'item', name: 'stone', amount_min: 24, amount_max: 50 }, { type: 'item', name: 'coal', amount: 1 }] },
+        },
+        decoration: { type: 'simple-entity', name: 'decoration' },
+        'empty-rock': { type: 'simple-entity', name: 'empty-rock', minable: { results: {} } },
+      },
+    }
+    const sources = normalizeDump(raw, metadata, locales).sources.filter(source => source.kind === 'entity')
+    expect(sources).toEqual([
+      { id: 'tree:tree-01', kind: 'entity', products: [{ material: 'item:wood', amount: 4 }] },
+      expect.objectContaining({
+        id: 'simple-entity:huge-rock',
+        products: [
+          expect.objectContaining({ material: 'item:stone', amountMin: 24, amountMax: 50 }),
+          expect.objectContaining({ material: 'item:coal', amount: 1 }),
+        ],
+      }),
+    ])
+  })
+
+  test('rejects entity sources that yield unknown materials', () => {
+    const raw = { ...fixture(), tree: { 'tree-01': { type: 'tree', name: 'tree-01', minable: { result: 'wood' } } } }
+    expect(() => normalizeDump(raw, metadata, locales)).toThrow('Unknown material item:wood')
+  })
+
   test('reports missing material references', () => {
     const raw = fixture()
     raw.recipe.plate.ingredients[0].name = 'missing'

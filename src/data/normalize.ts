@@ -46,6 +46,9 @@ const metadataSchema = z.object({
   mods: z.array(z.object({ name: z.string(), version: z.string() })),
 })
 
+// Minable map entities that yield materials by hand or by robots, such as wood from trees.
+const ENTITY_SOURCE_CATEGORIES = ['tree', 'simple-entity', 'fish'] as const
+
 function quantity(entry: z.infer<typeof entrySchema>) {
   return {
     material: `${entry.type}:${entry.name}`,
@@ -115,6 +118,18 @@ export function normalizeDump(rawInput: unknown, metadataInput: unknown, locales
       id: `resource:${resource.name}`, kind: 'resource', products,
       requiredFluid: minable.required_fluid ? `fluid:${minable.required_fluid}` : undefined,
     })
+  }
+  for (const category of ENTITY_SOURCE_CATEGORIES) {
+    for (const entity of Object.values(raw[category] ?? {})) {
+      const minable = entity.minable
+      if (!minable) continue
+      const products = minable.results?.map(quantity) ?? (minable.result ? [{
+        material: `item:${minable.result}`, amount: minable.count ?? 1,
+      }] : [])
+      // Unlike resources, decorative entities may be minable without yielding anything.
+      if (!products.length) continue
+      sources.push({ id: `${category}:${entity.name}`, kind: 'entity', products })
+    }
   }
   for (const tile of Object.values(raw.tile ?? {})) {
     if (tile.fluid) sources.push({

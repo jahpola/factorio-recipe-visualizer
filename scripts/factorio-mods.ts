@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 
@@ -12,6 +12,15 @@ export type LocalMod = {
   info: ModInfo
   archive: string
 }
+
+// A resolved mod either comes from a local archive or ships with the game (archive omitted).
+export type ResolvedMod = {
+  info: ModInfo
+  archive?: string
+}
+
+// Official expansion mods ship in the game data directory, not as archives in the mods directory.
+export const BUILT_IN_MODS = ['elevated-rails', 'quality', 'space-age'] as const
 
 export function parseModSelection(args: string[]) {
   if (!args.length) return []
@@ -72,19 +81,49 @@ export async function loadLocalMods(directory: string): Promise<Map<string, Loca
   return mods
 }
 
-function requiredDependencyName(dependency: string) {
-  if (/^(?:\?|~|!\s*|\(\?\))/.test(dependency.trim())) return undefined
-  return /^([^\s]+)/.exec(dependency.trim())?.[1]
+export async function loadBuiltInMods(dataDirectory: string): Promise<Map<string, ModInfo>> {
+  const mods = new Map<string, ModInfo>()
+  for (const name of BUILT_IN_MODS) {
+    const file = path.join(dataDirectory, name, 'info.json')
+    let input: string
+    try {
+      input = await readFile(file, 'utf8')
+    } catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') continue
+      throw error
+    }
+    const info = parseModInfo(input, file)
+    if (info.name !== name) throw new Error(`${file} contains ${info.name}, not ${name}.`)
+    mods.set(name, info)
+  }
+  return mods
 }
 
-export function resolveModDependencies(requested: string[], available: Map<string, LocalMod>) {
-  const ordered: LocalMod[] = []
+// Factorio dependency format: [prefix] name [operator version]. Names may contain spaces.
+// `!` is incompatible, `?` and `(?)` are optional, and `~` is required without affecting load order.
+export function requiredDependencyName(dependency: string) {
+  const match = /^(?:(!|\?|\(\?\)|~)\s*)?(.+?)(?:\s*(?:<=|>=|=|<|>)\s*\S+)?$/.exec(dependency.trim())
+  if (!match) return undefined
+  const [, prefix, name] = match
+  return prefix === undefined || prefix === '~' ? name : undefined
+}
+
+export function resolveModDependencies(
+  requested: string[],
+  available: ReadonlyMap<string, LocalMod>,
+  builtIn: ReadonlyMap<string, ModInfo> = new Map(),
+): ResolvedMod[] {
+  const ordered: ResolvedMod[] = []
   const included = new Set<string>()
   const active = new Set<string>()
   function visit(name: string) {
     if (name === 'base' || included.has(name)) return
     if (active.has(name)) throw new Error(`Cyclic required mod dependency involving ${name}.`)
-    const mod = available.get(name)
+    const builtInInfo = builtIn.get(name)
+    const mod: ResolvedMod | undefined = builtInInfo ? { info: builtInInfo } : available.get(name)
+    if (!mod && (BUILT_IN_MODS as readonly string[]).includes(name)) {
+      throw new Error(`Required built-in mod ${name} is not installed with this Factorio.`)
+    }
     if (!mod) throw new Error(`Required mod ${name} is not available locally.`)
     active.add(name)
     for (const dependency of mod.info.dependencies ?? []) {

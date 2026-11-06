@@ -253,7 +253,8 @@ async function main() {
     await checkLayout('Restored preset')
     await click('header > button')
     await waitFor('return !document.querySelector("header > button")')
-    await greenCircuit()
+    // Forgetting the saved copy keeps the current, fully expanded graph.
+    await completeGreenCircuit()
     assert.deepEqual(await execute('return window.__safariErrors'), [], 'Captured errors after restoration')
     await command(`${root}/refresh`, 'POST', {})
     await waitFor(`return !!document.querySelector(".empty") && ![...document.querySelectorAll('[role="status"]')]

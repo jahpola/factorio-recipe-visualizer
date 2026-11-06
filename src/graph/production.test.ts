@@ -57,6 +57,24 @@ test('requires a producer choice and expands only the selected alternative', () 
   expect(() => buildProductionChain(preset, 'electronic-circuit', { 'item:iron-plate': 'missing' })).toThrow('Invalid producer')
 })
 
+test('treats entity-gathered materials without producers as raw', () => {
+  const preset = fixture()
+  preset.materials.push({ id: 'item:wood', name: 'wood', displayName: 'Wood', type: 'item' })
+  preset.recipes.push({ ...preset.recipes[0], id: 'small-pole', ingredients: [{ material: 'item:wood', amount: 1 }], products: [{ material: 'item:byproduct', amount: 1 }] })
+  preset.sources.push({ id: 'tree:tree-01', kind: 'entity', products: [{ material: 'item:wood', amount: 4 }] })
+  const chain = buildProductionChain(preset, 'small-pole', {}, new Set(['item:wood']))
+  expect(chain.nodes.find(node => node.id === 'item:wood')?.kind).toBe('raw')
+  expect(chain.warnings).toEqual([])
+})
+
+test('keeps recipe producers for materials that entities also yield', () => {
+  const preset = fixture()
+  preset.sources.push({ id: 'simple-entity:rock', kind: 'entity', products: [{ material: 'item:iron-plate', amount: 1 }] })
+  const chain = buildProductionChain(preset, 'electronic-circuit', {}, new Set(['item:iron-plate']))
+  expect(chain.nodes.find(node => node.id === 'item:iron-plate')?.kind).toBe('material')
+  expect(chain.nodes.some(node => node.id === 'recipe:iron-plate')).toBe(true)
+})
+
 test('keeps missing producers unresolved, not raw resources', () => {
   const preset = fixture()
   preset.recipes = preset.recipes.filter(recipe => recipe.id !== 'iron-plate')
