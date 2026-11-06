@@ -4,13 +4,14 @@ export type ChainNode = {
   id: string
   label: string
   icon?: string
-  kind: 'recipe' | 'material' | 'output' | 'raw' | 'choice' | 'unresolved'
+  kind: 'recipe' | 'material' | 'output' | 'raw' | 'choice' | 'unresolved' | 'collapsed' | 'byproduct'
 }
 export type ChainEdge = { id: string; source: string; target: string }
 export type ProductionChain = {
   nodes: ChainNode[]
   edges: ChainEdge[]
   choices: { material: string; recipes: Preset['recipes'] }[]
+  branches: { material: string; label: string }[]
   warnings: string[]
 }
 
@@ -18,6 +19,7 @@ export function buildProductionChain(
   preset: Preset,
   rootId: string,
   selections: Record<string, string> = {},
+  collapsedMaterials: ReadonlySet<string> = new Set(),
 ): ProductionChain {
   const recipes = new Map(preset.recipes.map(recipe => [recipe.id, recipe]))
   if (!recipes.has(rootId)) throw new Error(`Unknown recipe ${rootId}`)
@@ -36,9 +38,12 @@ export function buildProductionChain(
   const nodes = new Map<string, ChainNode>()
   const edges = new Map<string, ChainEdge>()
   const choices = new Map<string, ProductionChain['choices'][number]>()
+  const branches = new Map<string, ProductionChain['branches'][number]>()
   const warnings = new Set<string>()
   const expandedRecipes = new Set<string>()
   const expandedMaterials = new Set<string>()
+  const requiredMaterials = new Set<string>()
+  const producedMaterials = new Set<string>()
   const pending = [rootId]
   function materialNode(id: string) {
     const material = materials.get(id)
@@ -60,10 +65,12 @@ export function buildProductionChain(
     for (const product of recipe.products) {
       materialNode(product.material)
       connect(recipeId, product.material)
+      producedMaterials.add(product.material)
     }
     for (const ingredient of recipe.ingredients) {
       materialNode(ingredient.material)
       connect(ingredient.material, recipeId)
+      requiredMaterials.add(ingredient.material)
       if (ingredient.temperature !== undefined || ingredient.minimumTemperature !== undefined || ingredient.maximumTemperature !== undefined) {
         warnings.add('Fluid temperature compatibility is not evaluated yet; this graph shows dependencies, not a validated production plan.')
       }
@@ -79,6 +86,11 @@ export function buildProductionChain(
       if (selection && !candidates.some(candidate => candidate.id === selection)) {
         throw new Error(`Invalid producer ${selection} for ${ingredient.material}`)
       }
+      if (candidates.length) branches.set(ingredient.material, { material: ingredient.material, label: node.label })
+      if (collapsedMaterials.has(ingredient.material)) {
+        node.kind = 'collapsed'
+        continue
+      }
       if (candidates.length > 1) {
         choices.set(ingredient.material, { material: ingredient.material, recipes: candidates })
       }
@@ -91,9 +103,55 @@ export function buildProductionChain(
       }
     }
   }
+  for (const material of producedMaterials) {
+    if (!requiredMaterials.has(material) && nodes.get(material)?.kind === 'material') {
+      nodes.get(material)!.kind = 'byproduct'
+    }
+  }
   for (const product of recipes.get(rootId)!.products) {
     const node = nodes.get(product.material)!
-    if (node.kind === 'material') node.kind = 'output'
+    node.kind = 'output'
   }
-  return { nodes: [...nodes.values()], edges: [...edges.values()], choices: [...choices.values()], warnings: [...warnings] }
+  if (containsCycle([...nodes.keys()], [...edges.values()])) {
+    warnings.add('A production cycle is present. The loop is shown, but its production balance is not evaluated.')
+  }
+  for (const source of preset.sources) {
+    if (!source.requiredFluid) continue
+    for (const product of source.products) {
+      if (raw.has(product.material) && nodes.get(product.material)?.kind === 'raw') {
+        const fluid = materials.get(source.requiredFluid)
+        warnings.add(`Mining ${materials.get(product.material)?.displayName} may require ${fluid?.displayName ?? source.requiredFluid}; mining-fluid dependencies are not expanded.`)
+      }
+    }
+  }
+  return {
+    nodes: [...nodes.values()],
+    edges: [...edges.values()],
+    choices: [...choices.values()],
+    branches: [...branches.values()],
+    warnings: [...warnings],
+  }
+}
+
+function containsCycle(nodeIds: string[], edges: ChainEdge[]) {
+  const outgoing = new Map<string, string[]>()
+  for (const edge of edges) {
+    const targets = outgoing.get(edge.source) ?? []
+    targets.push(edge.target)
+    outgoing.set(edge.source, targets)
+  }
+  const visited = new Set<string>()
+  const active = new Set<string>()
+  function visit(id: string): boolean {
+    if (active.has(id)) return true
+    if (visited.has(id)) return false
+    visited.add(id)
+    active.add(id)
+    for (const target of outgoing.get(id) ?? []) {
+      if (visit(target)) return true
+    }
+    active.delete(id)
+    return false
+  }
+  return nodeIds.some(visit)
 }

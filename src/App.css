@@ -30,7 +30,12 @@ small { display: block; color: #bdc5cf; margin-top: 0.3rem; }
 .chain-node.raw { border-color: #80cc92; background: #203d2b; }
 .chain-node.choice { border-color: #f0bf64; background: #42351d; }
 .chain-node.unresolved { border-color: #ff9292; background: #492525; }
-.producer-choice, .recipe-details, .chain-summary { margin-top: 1.25rem; }
+.chain-node.collapsed { border-style: dashed; border-color: #b7c0cb; background: #343a42; }
+.chain-node.byproduct { border-color: #d3a875; background: #3b3024; }
+.producer-choice, .recipe-details, .chain-summary, .branch-controls { margin-top: 1.25rem; }
+.branch-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.branch-controls h3 { flex-basis: 100%; margin: 0; }
+.branch-controls button { font-size: 0.9rem; }
 [role="alert"] { color: #ffaaaa; white-space: pre-wrap; overflow-wrap: anywhere; }
 summary { cursor: pointer; padding: 0.5rem 0; }
 @media (max-width: 760px) {
