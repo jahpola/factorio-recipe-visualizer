@@ -64,7 +64,7 @@ test('imports, searches and selects a recipe to build its chain', async () => {
   expect(screen.getByText('No matching recipes.')).toBeDefined()
   fireEvent.change(search, { target: { value: 'plate' } })
   fireEvent.click(screen.getByRole('button', { name: /Smelt plate/ }))
-  expect(screen.getByLabelText('Production chain').textContent).toContain('Ore')
+  expect((await screen.findByLabelText('Production chain')).textContent).toContain('Ore')
   expect(screen.getByLabelText('Recipe details').textContent).toContain('Ingredients: Ore')
 })
 

@@ -142,6 +142,13 @@ at commit `7adb18a`. Findings 1–3 are fixed; the remaining findings are open.
   `elkjs/lib/elk.bundled.js` blocks the UI on large graphs and accounts for
   much of the bundle that exceeds Vite's 500 kB advisory. Use the ELK web
   worker and lazy-load the graph.
+  **Resolution:** Fixed. Layout runs in ELK's classic Web Worker
+  (`src/graph/layout-engine.ts`). A superseded or unmounted layout terminates
+  the worker, so stale layouts no longer delay new ones. A worker that fails to
+  load rejects pending layouts instead of leaving them pending forever. The
+  graph and React Flow load lazily. Pure ELK mapping lives in
+  `src/graph/layout.ts`. A layout result that is missing nodes is reported
+  instead of crashing. See "Validation of the layout worker" below.
 - **The recipe list is recomputed on every keystroke** (`src/App.tsx`): the
   filter and the full list re-render on each input change. Memoize, use
   `useDeferredValue`, or virtualize the list for large mod catalogs.
@@ -173,6 +180,36 @@ Validated on 2026-11-06, on uncommitted changes on top of `7adb18a`:
   shotgun, combat shotgun, spidertron).
 - Existing `preset.json` files predate fix 1. Re-run `pnpm export:factorio` (or
   re-import a fresh export) to get entity sources in the app.
+
+### Validation of the layout worker
+
+Validated on 2026-11-06, on uncommitted changes on top of `e3f71f8`:
+
+- `pnpm test` (13 files, 74 tests; 1 file and 1 test skipped), `pnpm typecheck`,
+  `pnpm lint`, and `pnpm build` passed. Initial JavaScript chunk: 1936 kB
+  (599 kB gzip) before, 325 kB (99 kB gzip) after. The graph chunk is 185 kB
+  and loads on first use. The ELK worker script (1595 kB) is a separate asset,
+  loaded only by the worker. Vite no longer reports the large-chunk advisory.
+- Native Safari 27.2, production preview:
+  - `pnpm verify:safari` with the base 2.1.23 preset passed twice. The first
+    attempt timed out after the first recipe click (heading still "Select a
+    recipe", no errors or alerts). It did not happen again in those two runs
+    or in a separate WebDriver-click debug run. The cause is unknown.
+  - `verify:safari` had an existing bug that also fails on `e3f71f8`. After
+    "Forget saved preset" it expected the graph to restart collapsed, but
+    forgetting keeps the expanded graph. The check now expects the complete
+    graph.
+  - New `pnpm verify:safari-large` with the Nullius 2.1.2 preset (53.8 MB)
+    passed. `nullius-probe` was fully expanded through the UI to 1061 nodes and
+    2328 edges in 16 rounds. While a layout was pending, the longest main-thread
+    stall was 18 ms. A search typed during layout was handled in a 15 ms round
+    trip. Layout and render took 1832 ms in total. React Flow rendering the
+    final graph still stalls the main thread for about 215 ms.
+  - The same check against `e3f71f8` (main-thread ELK) did not finish. Each
+    click in an expansion round started a main-thread layout that was never
+    cancelled. One WebDriver command then waited longer than its 180 s timeout
+    for the page to respond.
+- Chrome has not been checked.
 
 ### Validation of the review
 

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Background, Controls, ReactFlow, ReactFlowProvider, Position } from '@xyflow/react'
 import type { Node, Edge } from '@xyflow/react'
-import ELK from 'elkjs/lib/elk.bundled.js'
 import type { ProductionChain } from './production'
+import { NODE_HEIGHT, NODE_WIDTH, nodePositions, toElkGraph } from './layout'
+import { LayoutCancelled, layoutGraph } from './layout-engine'
 import { ItemIcon } from '../ItemIcon'
 import '@xyflow/react/dist/style.css'
-
-const elk = new ELK()
 
 export function ProductionGraph({ chain, onInspect }: {
   chain: ProductionChain
@@ -17,19 +16,12 @@ export function ProductionGraph({ chain, onInspect }: {
 
   useEffect(() => {
     let active = true
-    elk.layout({
-      id: 'production',
-      layoutOptions: {
-        'elk.algorithm': 'layered',
-        'elk.direction': 'RIGHT',
-        'elk.spacing.nodeNode': '35',
-        'elk.layered.spacing.nodeNodeBetweenLayers': '90',
-      },
-      children: chain.nodes.map(node => ({ id: node.id, width: 200, height: 110 })),
-      edges: chain.edges.map(edge => ({ id: edge.id, sources: [edge.source], targets: [edge.target] })),
-    }).then(result => {
+    // Layout runs in a worker. When the chain changes first, the stale job is cancelled
+    // so a long layout does not delay the next one.
+    const job = layoutGraph(toElkGraph(chain))
+    job.promise.then(result => {
       if (!active) return
-      const positions = new Map(result.children?.map(node => [node.id, { x: node.x ?? 0, y: node.y ?? 0 }]))
+      const positions = nodePositions(chain, result)
       setLayout(previous => ({
         chain,
         version: (previous?.version ?? 0) + 1,
@@ -44,7 +36,7 @@ export function ProductionGraph({ chain, onInspect }: {
           sourcePosition: Position.Right,
           targetPosition: Position.Left,
           className: `chain-node ${node.kind}`,
-          style: { width: 200, height: 110 },
+          style: { width: NODE_WIDTH, height: NODE_HEIGHT },
         })),
         edges: chain.edges.map(edge => ({
           ...edge,
@@ -52,9 +44,12 @@ export function ProductionGraph({ chain, onInspect }: {
         })),
       }))
     }).catch((failure: unknown) => {
-      if (active) setError({ chain, message: `Graph layout failed: ${failure instanceof Error ? failure.message : String(failure)}` })
+      if (active && !(failure instanceof LayoutCancelled)) setError({ chain, message: `Graph layout failed: ${failure instanceof Error ? failure.message : String(failure)}` })
     })
-    return () => { active = false }
+    return () => {
+      active = false
+      job.cancel()
+    }
   }, [chain])
 
   if (error?.chain === chain) return <p role="alert">{error.message}</p>

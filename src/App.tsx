@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { parsePreset } from './data/preset'
 import type { Preset } from './data/preset'
 import { forgetSavedPreset, readSavedPreset, savePreset } from './data/preset-storage'
 import { buildProductionChain } from './graph/production'
-import { ProductionGraph } from './graph/ProductionGraph'
 import { ItemIcon } from './ItemIcon'
 import './App.css'
+
+// The graph (React Flow and the ELK worker) loads on first use, keeping the initial bundle small.
+const ProductionGraph = lazy(() => import('./graph/ProductionGraph').then(
+  module => ({ default: module.ProductionGraph }),
+  (failure: unknown) => ({
+    default: () => <p role="alert">The graph could not be loaded: {failure instanceof Error ? failure.message : String(failure)} Reload the page to try again.</p>,
+  }),
+))
 
 function App() {
   const [preset, setPreset] = useState<Preset>()
@@ -196,7 +203,11 @@ function App() {
               <h2>{preset.recipes.find(recipe => recipe.id === selected)?.displayName ?? 'Select a recipe'}</h2>
               <p className="legend">Flow: inputs → recipes → products. Green: raw resource. Amber: producer choice. Red: unresolved input. Expand branches as needed.</p>
               {result?.error && <p role="alert">{result.error}</p>}
-              {result?.chain && <ProductionGraph chain={result.chain} onInspect={setInspected} />}
+              {result?.chain && (
+                <Suspense fallback={<p role="status">Loading graph...</p>}>
+                  <ProductionGraph chain={result.chain} onInspect={setInspected} />
+                </Suspense>
+              )}
               {result?.chain?.branches.length ? (
                 <section className="branch-controls" aria-label="Branch controls">
                   <h3>Branch controls</h3>

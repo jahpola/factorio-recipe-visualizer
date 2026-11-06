@@ -167,6 +167,21 @@ preview. An initial session-creation timeout was resolved on retry.
 Finder reveal, hidden-folder picker shortcuts, and native file dragging remain
 pending manual verification.
 
+For large-graph responsiveness, use a modded preset with a huge production chain,
+such as Nullius:
+
+```sh
+pnpm verify:safari-large http://localhost:4173 .factorio-export/mods-nullius-<unique suffix>/preset.json [recipe-id]
+```
+
+Without a recipe ID, the script finds the visible recipe with the largest fully
+expanded chain (this takes several seconds; in Nullius 2.1.2 it is
+`nullius-probe`, with 1061 nodes and 2328 edges). It expands that chain through
+the UI, choosing the first listed producer for each choice, waits for the exact
+expected node and edge counts, and measures main-thread stalls with a timer
+heartbeat. It fails if the main thread stalls for more than 250 ms while a layout
+is pending, and checks that the recipe search still responds during layout.
+
 The import is supplied through an in-page `File` and
 change event, not the operating-system file picker. Startup console errors,
 manual pan/drag, and the OS file picker still require separate verification.
@@ -199,8 +214,11 @@ No ratios, machine counts, graph persistence, backend, or server database are in
 Fluid temperature compatibility is not evaluated; constrained ingredients produce
 a warning. Mining-fluid dependencies are not expanded. Dependency graphs now
 expand progressively without an arbitrary node cap; fully expanding a very large
-modded chain may still take time. The initial production bundle includes ELK's
-sizeable layout engine and currently triggers Vite's large-chunk advisory.
+modded chain may still take time. Layout runs in ELK's Web Worker, so the page
+stays responsive while a large graph is arranged; a layout that is superseded by
+a newer chain is cancelled. The graph (React Flow) loads on first use and the
+ELK worker script (about 1.6 MB) loads only when a layout starts, keeping the
+initial JavaScript chunk at about 325 kB.
 
 ## Export base-game data (Milestone 1)
 
