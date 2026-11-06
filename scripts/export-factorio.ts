@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
-import { loadLocalMods, parseModSelection, resolveModDependencies } from './factorio-mods.ts'
+import { BUILT_IN_MODS, loadBuiltInMods, loadLocalMods, parseModSelection, resolveModDependencies } from './factorio-mods.ts'
 import { normalizeDump } from '../src/data/normalize.ts'
 import { embedIcons } from './icons.ts'
 import { finderRevealCommand } from './export-instructions.ts'
@@ -24,20 +24,24 @@ async function main() {
   const gameVersion = /Version: (\d+\.\d+\.\d+)/.exec(version.stdout)?.[1]
   if (!gameVersion) throw new Error(`Cannot identify Factorio version: ${version.stdout}`)
   const localModDirectory = process.env.FACTORIO_MODS ?? path.join(homedir(), 'Library/Application Support/factorio/mods')
+  const data = path.join(appPath, 'Contents/data')
   const availableMods = requestedMods.length ? await loadLocalMods(localModDirectory) : new Map()
-  const selectedMods = resolveModDependencies(requestedMods, availableMods)
+  const builtInMods = requestedMods.length ? await loadBuiltInMods(data) : new Map()
+  const selectedMods = resolveModDependencies(requestedMods, availableMods, builtInMods)
   const output = path.resolve('.factorio-export')
   await mkdir(output, { recursive: true })
   const prefix = requestedMods.length ? `mods-${requestedMods.join('-')}-` : 'base-'
   const run = await mkdtemp(path.join(output, prefix))
   const mods = path.join(run, 'mods')
-  const data = path.join(appPath, 'Contents/data')
   await mkdir(mods)
-  for (const mod of selectedMods) await copyFile(mod.archive, path.join(mods, path.basename(mod.archive)))
+  for (const { archive } of selectedMods) {
+    if (archive) await copyFile(archive, path.join(mods, path.basename(archive)))
+  }
   await writeFile(path.join(mods, 'mod-list.json'), JSON.stringify({
     mods: [
       { name: 'base', enabled: true },
-      ...['elevated-rails', 'quality', 'space-age', 'recycler']
+      // Built-in expansion mods are enabled by default, so disable any that were not selected.
+      ...[...BUILT_IN_MODS, 'recycler']
         .filter(name => !selectedMods.some(mod => mod.info.name === name))
         .map(name => ({ name, enabled: false })),
       ...selectedMods.map(mod => ({ name: mod.info.name, enabled: true })),

@@ -34,7 +34,13 @@ export function buildProductionChain(
       producers.set(product.material, candidates)
     }
   }
-  const raw = new Set(preset.sources.flatMap(source => source.products.map(product => product.material)))
+  const sourceMaterials = (entity: boolean) => new Set(preset.sources
+    .filter(source => (source.kind === 'entity') === entity)
+    .flatMap(source => source.products.map(product => product.material)))
+  // Resources and tile fluids always end a branch. Entity sources (trees, rocks, fish) end it
+  // only when nothing visible produces the material, so they never hide recipe producers.
+  const raw = sourceMaterials(false)
+  const gathered = sourceMaterials(true)
   const nodes = new Map<string, ChainNode>()
   const edges = new Map<string, ChainEdge>()
   const choices = new Map<string, ProductionChain['choices'][number]>()
@@ -85,6 +91,10 @@ export function buildProductionChain(
         throw new Error(`Invalid producer ${selection} for ${ingredient.material}`)
       }
       if (candidates.length) branches.set(ingredient.material, { material: ingredient.material, label: node.label })
+      if (!candidates.length && gathered.has(ingredient.material)) {
+        node.kind = 'raw'
+        continue
+      }
       if (!candidates.length) {
         node.kind = 'unresolved'
         warnings.add(`No visible producer or raw-resource source for ${node.label} (${node.id}).`)
@@ -117,7 +127,7 @@ export function buildProductionChain(
   for (const source of preset.sources) {
     if (!source.requiredFluid) continue
     for (const product of source.products) {
-      if (raw.has(product.material) && nodes.get(product.material)?.kind === 'raw') {
+      if (nodes.get(product.material)?.kind === 'raw') {
         const fluid = materials.get(source.requiredFluid)
         warnings.add(`Mining ${materials.get(product.material)?.displayName} may require ${fluid?.displayName ?? source.requiredFluid}; mining-fluid dependencies are not expanded.`)
       }

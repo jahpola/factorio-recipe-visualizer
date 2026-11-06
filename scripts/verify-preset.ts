@@ -29,6 +29,10 @@ async function main() {
   assert.deepEqual(chain.warnings, [], 'Green circuit chain should resolve without warnings')
   assert.deepEqual(chain.nodes.filter(node => node.kind === 'raw').map(node => node.id).sort(), ['item:copper-ore', 'item:iron-ore'])
 
+  const pole = buildProductionChain(preset, 'small-electric-pole', {}, expanded)
+  assert.equal(pole.nodes.find(node => node.id === 'item:wood')?.kind, 'raw', 'Wood should be gathered from trees, not unresolved')
+  assert.ok(!pole.warnings.some(warning => warning.startsWith('No visible producer')), 'Small electric pole chain should have no unresolved inputs')
+
   const chemicalScience = buildProductionChain(preset, 'chemical-science-pack', {}, expanded)
   assert.ok(chemicalScience.nodes.some(node => node.id.startsWith('fluid:')), 'Chemical science chain should include fluid dependencies')
   assert.ok(chemicalScience.choices.some(choice => choice.material === 'fluid:petroleum-gas'), 'Chemical science chain should expose alternative petroleum gas producers')

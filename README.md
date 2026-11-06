@@ -188,7 +188,9 @@ and React Flow interaction. The real Factorio 2.1.24 base-game export is verifie
 with green circuit, chemical science, fluid, alternative-producer, and
 multi-output/byproduct chains. Hidden recipes are excluded from the browser and
 upstream producer candidates. Raw resources terminate expansion even when
-recipes can also produce them. Nullius 2.1.2 is separately verified against a
+recipes can also produce them. Materials gathered from trees, rocks, and fish
+(for example wood) are shown as raw only when no visible recipe produces them, so
+they never hide recipe producers. Nullius 2.1.2 is separately verified against a
 Factorio 2.1.24 export for alternatives, a production cycle, and multi-output
 byproducts. The mod-selection exporter is data-driven, but this is not a blanket
 compatibility certification for untested mods.
@@ -263,9 +265,13 @@ pnpm export:factorio --mods nullius
 
 By default, the exporter reads mod archives from
 `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS` to another
-mod directory when needed. Required dependencies are resolved recursively and
-copied into a new isolated export directory; optional dependencies are not
-enabled automatically. Missing required mods and ambiguous duplicate installed
+mod directory when needed. Required dependencies, including `~` dependencies
+that do not affect load order, are resolved recursively and copied into a new
+isolated export directory; optional (`?`, `(?)`) and incompatible (`!`)
+dependencies are not enabled. Required built-in expansion mods (`space-age`,
+`quality`, `elevated-rails`) are enabled from the game installation instead of
+the mod directory, and their versions are read from the game data. Exporting a
+mod that depends on Space Age has not yet been verified with a real export. Missing required mods and ambiguous duplicate installed
 versions fail explicitly. The active mod list, settings, and saves are not read
 or modified. The exporter checks the actual loaded mod set on every dump step, compares
 logged code-mod versions with the selected archives, and records the resolved
@@ -298,7 +304,8 @@ malformed records fail validation instead of being treated as raw resources.
 
 The initial adapter is verified with **Factorio 2.1.23** and explicitly targets
 **2.1.x**. Non-production recipe placeholders are excluded with recorded warnings.
-Mining products and tile fluids define resource boundaries; mining-fluid
+Mining products, tile fluids, and minable trees, rocks, and fish define resource
+boundaries; mining-fluid
 requirements are recorded, not recursively expanded. Temperature constraints are
 preserved for future graph logic, not evaluated by this importer.
 

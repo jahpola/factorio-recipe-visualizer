@@ -46,7 +46,9 @@ export const presetSchema = z.object({
   })),
   sources: z.array(z.object({
     id: z.string().min(1),
-    kind: z.enum(['resource', 'tile-fluid']),
+    // `entity` sources are minable map entities such as trees, rocks, and fish. Unlike
+    // resources, they end a dependency branch only when no visible recipe produces the material.
+    kind: z.enum(['resource', 'tile-fluid', 'entity']),
     products: z.array(quantity).min(1),
     requiredFluid: fluidId.optional(),
   })),
