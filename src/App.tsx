@@ -18,7 +18,7 @@ function App() {
   const [canForget, setCanForget] = useState(false)
   const [storageWarning, setStorageWarning] = useState('')
   const [choices, setChoices] = useState<Record<string, string>>({})
-  const [collapsedBranches, setCollapsedBranches] = useState<Set<string>>(() => new Set())
+  const [expandedBranches, setExpandedBranches] = useState<Set<string>>(() => new Set())
   const [inspected, setInspected] = useState('')
   const requests = useRef({ importing: 0, active: 0 })
   useEffect(() => {
@@ -48,11 +48,11 @@ function App() {
   const result = useMemo(() => {
     if (!preset || !selected) return undefined
     try {
-      return { chain: buildProductionChain(preset, selected, choices, collapsedBranches) }
+      return { chain: buildProductionChain(preset, selected, choices, expandedBranches) }
     } catch (failure) {
       return { error: failure instanceof Error ? failure.message : String(failure) }
     }
-  }, [preset, selected, choices, collapsedBranches])
+  }, [preset, selected, choices, expandedBranches])
   const materials = useMemo(() => new Map(preset?.materials.map(material => [material.id, material])), [preset])
 
   async function importPreset(file: File) {
@@ -68,7 +68,7 @@ function App() {
       setInspected('')
       setQuery('')
       setChoices({})
-      setCollapsedBranches(new Set())
+      setExpandedBranches(new Set())
       setFilename(file.name || 'Unnamed preset')
       setRemembered(false)
       setStorageWarning('')
@@ -182,7 +182,7 @@ function App() {
                     <button aria-pressed={selected === recipe.id} onClick={() => {
                       setSelected(recipe.id)
                       setChoices({})
-                      setCollapsedBranches(new Set())
+                      setExpandedBranches(new Set())
                       setInspected(`recipe:${recipe.id}`)
                     }}>
                       <ItemIcon src={recipe.icon} />{recipe.displayName}<small>{recipe.id}</small>
@@ -194,24 +194,31 @@ function App() {
             </aside>
             <section className="chain">
               <h2>{preset.recipes.find(recipe => recipe.id === selected)?.displayName ?? 'Select a recipe'}</h2>
-              <p className="legend">Flow: inputs → recipes → products. Green: raw resource. Amber: producer choice. Red: unresolved input.</p>
+              <p className="legend">Flow: inputs → recipes → products. Green: raw resource. Amber: producer choice. Red: unresolved input. Expand branches as needed.</p>
               {result?.error && <p role="alert">{result.error}</p>}
               {result?.chain && <ProductionGraph chain={result.chain} onInspect={setInspected} />}
               {result?.chain?.branches.length ? (
                 <section className="branch-controls" aria-label="Branch controls">
                   <h3>Branch controls</h3>
                   {result.chain.branches.map(branch => {
-                    const collapsed = collapsedBranches.has(branch.material)
+                    const expanded = expandedBranches.has(branch.material)
+                    const needsChoice = result.chain.choices.some(choice => choice.material === branch.material)
+                    const selectedProducer = choices[branch.material]
                     return (
-                      <button key={branch.material} aria-pressed={collapsed} onClick={() => {
-                        setCollapsedBranches(previous => {
-                          const next = new Set(previous)
-                          if (next.has(branch.material)) next.delete(branch.material)
-                          else next.add(branch.material)
-                          return next
-                        })
-                      }}>
-                        {collapsed ? 'Expand' : 'Collapse'} {branch.label} branch
+                      <button
+                        key={branch.material}
+                        aria-pressed={expanded}
+                        disabled={needsChoice && !selectedProducer}
+                        onClick={() => {
+                          setExpandedBranches(previous => {
+                            const next = new Set(previous)
+                            if (next.has(branch.material)) next.delete(branch.material)
+                            else next.add(branch.material)
+                            return next
+                          })
+                        }}
+                      >
+                        {expanded ? 'Collapse' : 'Expand'} {branch.label} branch
                       </button>
                     )
                   })}
@@ -223,6 +230,12 @@ function App() {
                   <select value={choices[choice.material] ?? ''} onChange={event => {
                     const value = event.target.value
                     setChoices(previous => ({ ...previous, [choice.material]: value }))
+                    setExpandedBranches(previous => {
+                      const next = new Set(previous)
+                      if (value) next.add(choice.material)
+                      else next.delete(choice.material)
+                      return next
+                    })
                   }}>
                     <option value="">Choose a recipe</option>
                     {choice.recipes.map(recipe => <option key={recipe.id} value={recipe.id}>{recipe.displayName} ({recipe.id})</option>)}

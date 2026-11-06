@@ -155,7 +155,7 @@ A recipe can:
 | Material | Stable identifier, item/fluid type, name, optional icon |
 | Recipe | Identifier, ingredients, products, crafting category |
 | Resource source | Identifies extractable raw-resource boundaries |
-| Graph selection | Selected root recipe, chosen alternatives, collapsed branches |
+| Graph selection | Selected root recipe, chosen alternatives, expanded branches |
 
 Maintain a reverse index:
 
@@ -383,14 +383,39 @@ example.
   viewport widths of 1280/375/336 pixels. Safari clamps a 320-pixel request to
   336; startup errors, the OS file picker, and manual pan/drag remain unverified.
 
-### Milestone 4: Mod compatibility
+### Milestone 4: General mod compatibility
 
-- Import a separate Nullius preset.
-- Test complex alternatives, loops, and multi-output chains.
-- Improve incremental expansion and large-graph responsiveness.
+**Status: Complete**
+
+- Export separate presets for explicit locally available mod combinations.
+- Validate a real Nullius preset with complex alternatives, loops, and
+  multi-output chains.
+- Expand dependencies progressively to improve large-graph responsiveness.
 
 **Done when:** representative Nullius chains work without hardcoded mod-specific
 recipe rules.
+
+#### Milestone 4 implementation status
+
+- Added `pnpm export:factorio --mods <names>` with recursive required-dependency
+  resolution from local archives, isolated mod lists/settings, explicit loaded
+  mod verification, exact version metadata, and `FACTORIO_MODS` override support.
+  The existing no-argument command continues to export base game only.
+- Generated and validated a separate Nullius 2.1.2 preset against Factorio
+  2.1.24 with its required local dependencies: 1,371 materials, 2,301 recipes,
+  and 15 resource sources. Local exports remain ignored and are not committed.
+- Added `pnpm verify:mod-preset` for the real Nullius bulk-inserter dependency
+  chain. It verifies alternatives, a production cycle, and multi-output
+  byproducts; application graph logic remains mod-agnostic.
+- Preset verification still passes for the real base-game chains on Factorio
+  2.1.24. Added progressive-expansion and deep-cycle regression tests.
+- Native Safari 27.2 production-preview checks passed for the progressive
+  initial graph, full green-circuit expansion, branch collapse/reopen,
+  alternative selection retention, and representative fluid/byproduct details.
+  No post-load browser errors or horizontal overflow occurred at actual widths
+  of 1280/375/336 pixels. Safari clamped 320 to 336 pixels, so 320 pixels is not
+  verified. The native UI check used the base-game preset; Nullius behavior is
+  validated against its real export by `verify:mod-preset`.
 
 ## 9. Validation
 
