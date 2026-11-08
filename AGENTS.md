@@ -42,6 +42,9 @@
   hardcoding a user's filesystem path; support the `FACTORIO_APP` override.
 - Use [scripts/export-factorio.ts](./scripts/export-factorio.ts) for isolated
   exports. Never modify active game saves, configuration, mod lists, or settings.
+- If an export fails or the loaded mod list cannot be confirmed, do not generate
+  a preset. Report the failing step and the observed mod list, and do not label
+  the output as base game.
 - Verify the actual loaded mods before describing a preset as base game.
 - Keep generated game data in the ignored `.factorio-export/` directory. Do not
   commit raw exports, presets, or game assets.
@@ -50,11 +53,17 @@
 ## Validation and documentation
 
 - Add focused regression tests for changed behavior.
-- Run the relevant checks with pnpm: `test`, `typecheck`, `lint`, and `build`.
-  Documentation-only changes do not require application checks.
+- For application code changes, run all of `pnpm test`, `pnpm typecheck`,
+  `pnpm lint`, and `pnpm build`. Documentation-only changes require none of
+  these.
 - After importer/schema changes, also run
   `pnpm verify:preset <path/to/preset.json>` against a real local export.
+- If the Factorio installation cannot be discovered and `FACTORIO_APP` is
+  unset, stop and report that the export could not be run. Do not mark the
+  milestone complete, and list `pnpm verify:preset` as pending verification.
 - Keep the green circuit dependency chain as the first end-to-end example.
-- Update directly affected documentation and distinguish completed checks from
-  pending verification. Do not mark a milestone complete on partial evidence.
+- Update README.md when setup, export commands, or known limitations change, and
+  update PLAN.md only when a milestone's acceptance criteria status changes.
+  Distinguish completed checks from pending verification. Do not mark a
+  milestone complete on partial evidence.
 - Preserve unrelated worktree changes. Create or amend commits only when asked.
