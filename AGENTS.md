@@ -13,7 +13,7 @@
 
 - Development is on macOS, with Node.js managed by fnm.
 - Use the versions pinned in `.node-version` and `package.json`. Run `fnm use`
-  before project commands, or `fnm exec --using=24.22.1 pnpm <command>` when the
+  before project commands, or `fnm exec --using=26.13.1 pnpm <command>` when the
   shell has not initialized fnm.
 - Use pnpm for dependency installation and scripts. Preserve `pnpm-lock.yaml`;
   do not introduce npm or Yarn lockfiles.

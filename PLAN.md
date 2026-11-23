@@ -242,7 +242,7 @@ start the Hello World application with `pnpm dev`, and pass the documented check
 
 #### Stage 0 implementation status
 
-- Implemented with fnm-managed Node.js 24.22.1 and pnpm 12.15.0, pinned in
+- Implemented with fnm-managed Node.js 26.13.1 and pnpm 12.15.0, pinned in
   `.node-version` and `package.json`.
 - React, TypeScript (strict mode), Vite, Oxlint, and Vitest are installed, with a
   generated pnpm lockfile and setup instructions in [README.md](./README.md).
