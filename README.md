@@ -8,7 +8,7 @@ See [PLAN.md](./PLAN.md) for milestones and acceptance criteria.
 
 - macOS, with Safari as the initial browser target; Chrome support follows.
 - [fnm](https://github.com/Schniz/fnm) to manage Node.js.
-- Node.js **24.22.1**, the latest LTS at initial setup.
+- Node.js **26.13.1**, the current LTS.
 - pnpm **12.15.0**, the latest stable release at initial setup.
 
 The Node.js version is pinned in `.node-version`, and pnpm is pinned in
